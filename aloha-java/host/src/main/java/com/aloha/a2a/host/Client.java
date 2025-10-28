@@ -165,7 +165,7 @@ public class Client {
      * The agent card is always served over HTTP, even for gRPC agents.
      * This method handles the URL conversion based on the transport type:
      * <ul>
-     *   <li><b>gRPC</b>: Converts "host:port" to "<a href="http://host:8080">...</a>" (agent card port)</li>
+     *   <li><b>gRPC</b>: Converts "host:port" to "http://host:port" (same port for agent card)</li>
      *   <li><b>JSON-RPC/REST</b>: Uses the provided HTTP URL directly</li>
      * </ul>
      *
@@ -178,17 +178,17 @@ public class Client {
         }
         
         // For gRPC format (host:port), convert to HTTP URL
-        // Agent card is available on HTTP port 8080 for gRPC mode
+        // Agent card is available on the same port as gRPC in unified mode
         if (transportType == TransportType.GRPC) {
             // Parse host:port format
             String[] parts = serverUrl.split(":");
             if (parts.length == 2) {
                 String host = parts[0];
-                // Agent card for gRPC mode is on port 8080
-                int agentCardPort = 8080;
-                logger.info("Converting gRPC URL {} to HTTP URL for agent card fetch (using port {})", 
-                        serverUrl, agentCardPort);
-                return HTTP + host + ":" + agentCardPort;
+                // Agent card for gRPC mode is on the same port as gRPC
+                String port = parts[1];
+                logger.info("Converting gRPC URL {} to HTTP URL for agent card fetch (using same port {})", 
+                        serverUrl, port);
+                return HTTP + host + ":" + port;
             }
         }
         
