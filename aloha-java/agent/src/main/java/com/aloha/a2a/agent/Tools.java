@@ -10,7 +10,19 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
- * Tools available to the Dice Agent.
+ * Tools available to the Dice Agent for LLM function calling.
+ * <p>
+ * This class provides two main tools that can be invoked by the LLM:
+ * <ul>
+ *   <li>{@link #rollDice(int)} - Rolls an N-sided dice</li>
+ *   <li>{@link #checkPrime(List)} - Checks if numbers are prime</li>
+ * </ul>
+ * <p>
+ * These tools are automatically registered with Langchain4j through the {@code @Tool} annotation
+ * and can be called by the LLM based on user requests.
+ *
+ * @see DiceAgent
+ * @see dev.langchain4j.agent.tool.Tool
  */
 @ApplicationScoped
 public class Tools {
@@ -19,10 +31,20 @@ public class Tools {
     private final Random random = new Random();
 
     /**
-     * Rolls an N-sided dice and returns the result.
+     * Rolls an N-sided dice and returns a random result.
+     * <p>
+     * This tool simulates rolling a dice with the specified number of sides.
+     * The result is a random integer between 1 and N (inclusive).
+     * <p>
+     * Example usage by LLM:
+     * <ul>
+     *   <li>"Roll a 6-sided dice" → calls rollDice(6)</li>
+     *   <li>"Roll a d20" → calls rollDice(20)</li>
+     * </ul>
      * 
-     * @param sides The number of sides on the dice (must be positive)
-     * @return The result of the dice roll (1 to N)
+     * @param sides the number of sides on the dice (must be positive)
+     * @return the result of the dice roll, a random integer from 1 to sides (inclusive)
+     * @throws IllegalArgumentException if sides is less than or equal to 0
      */
     @Tool("Rolls an N-sided dice and returns a random number between 1 and N")
     public int rollDice(int sides) {
@@ -37,10 +59,21 @@ public class Tools {
     }
 
     /**
-     * Checks which numbers in the list are prime.
+     * Checks which numbers in the provided list are prime numbers.
+     * <p>
+     * This tool analyzes a list of integers and identifies which ones are prime.
+     * A prime number is a natural number greater than 1 that has no positive divisors
+     * other than 1 and itself.
+     * <p>
+     * Example usage by LLM:
+     * <ul>
+     *   <li>"Is 17 prime?" → calls checkPrime([17])</li>
+     *   <li>"Check if 2, 4, 7, 9, 11 are prime" → calls checkPrime([2, 4, 7, 9, 11])</li>
+     * </ul>
      * 
-     * @param numbers List of integers to check
-     * @return A string describing which numbers are prime
+     * @param numbers the list of integers to check for primality (must not be null)
+     * @return a human-readable string describing which numbers are prime,
+     *         or a message indicating no primes were found
      */
     @Tool("Checks if the given numbers are prime and returns which ones are prime")
     public String checkPrime(List<Integer> numbers) {
@@ -50,7 +83,7 @@ public class Tools {
         
         List<Integer> primes = numbers.stream()
                 .filter(this::isPrime)
-                .collect(Collectors.toList());
+                .toList();
         
         if (primes.isEmpty()) {
             logger.info("No prime numbers found in: {}", numbers);
@@ -66,10 +99,22 @@ public class Tools {
     }
 
     /**
-     * Checks if a number is prime.
+     * Determines if a given number is prime using trial division.
+     * <p>
+     * This is a private helper method used by {@link #checkPrime(List)}.
+     * The algorithm uses trial division, checking divisibility up to the square root
+     * of the number for efficiency.
+     * <p>
+     * Algorithm:
+     * <ol>
+     *   <li>Numbers ≤ 1 are not prime</li>
+     *   <li>2 is prime (the only even prime)</li>
+     *   <li>Even numbers > 2 are not prime</li>
+     *   <li>For odd numbers, check divisibility by odd numbers from 3 to √n</li>
+     * </ol>
      * 
-     * @param n The number to check
-     * @return true if the number is prime, false otherwise
+     * @param n the number to check for primality
+     * @return {@code true} if the number is prime, {@code false} otherwise
      */
     private boolean isPrime(int n) {
         if (n <= 1) {

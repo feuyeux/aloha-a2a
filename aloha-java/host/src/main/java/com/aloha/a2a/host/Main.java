@@ -5,22 +5,46 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Main entry point for the A2A Host client.
- * Provides command-line interface for sending messages to agents.
+ * <p>
+ * This class provides a command-line interface for sending messages to A2A agents
+ * using different transport protocols (gRPC, JSON-RPC, or REST).
+ * <p>
+ * Usage:
+ * <pre>
+ * mvn exec:java -Dexec.args="--transport grpc --port 11000 --message 'Roll a dice'"
+ * </pre>
+ * <p>
+ * Command-line arguments:
+ * <ul>
+ *   <li>{@code --transport <grpc|jsonrpc|rest>}: Transport protocol to use (default: grpc)</li>
+ *   <li>{@code --host <hostname>}: Agent hostname (default: localhost)</li>
+ *   <li>{@code --port <port>}: Agent port (default: 11000 for gRPC, 11001 for JSON-RPC, 11002 for REST)</li>
+ *   <li>{@code --message <text>}: Message to send to the agent (default: "Roll a 6-sided dice")</li>
+ *   <li>{@code --help, -h}: Show help message</li>
+ * </ul>
+ *
+ * @see Client
+ * @see TransportType
  */
 public class Main {
     
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
     
     private static final String DEFAULT_HOST = "localhost";
+    // Port configuration according to specification:
+    // Java: gRPC=11000, JSON-RPC=11001, REST=11002
     private static final int DEFAULT_GRPC_PORT = 11000;
     private static final int DEFAULT_JSONRPC_PORT = 11001;
     private static final int DEFAULT_REST_PORT = 11002;
     private static final String DEFAULT_MESSAGE = "Roll a 6-sided dice";
     
     /**
-     * Main entry point.
+     * Main entry point for the A2A Host client.
+     * <p>
+     * Parses command-line arguments, creates a client, sends a message to the agent,
+     * and displays the response.
      *
-     * @param args Command-line arguments
+     * @param args command-line arguments (see class documentation for details)
      */
     public static void main(String[] args) {
         String host = DEFAULT_HOST;
@@ -112,7 +136,15 @@ public class Main {
         logger.info("  Message: {}", message);
         
         // Create and run client
-        Client client = new Client(serverUrl);
+        TransportType transportType = null;
+        try {
+            transportType = TransportType.fromString(transport);
+        } catch (IllegalArgumentException e) {
+            logger.error("Error: {}", e.getMessage());
+            printUsageAndExit();
+        }
+        
+        Client client = new Client(serverUrl, transportType);
         
         try {
             client.initialize();
@@ -131,7 +163,18 @@ public class Main {
     }
     
     /**
-     * Build server URL based on transport protocol.
+     * Builds the server URL based on the transport protocol.
+     * <p>
+     * URL format varies by transport:
+     * <ul>
+     *   <li><b>gRPC</b>: "host:port" (e.g., "localhost:11000")</li>
+     *   <li><b>JSON-RPC/REST</b>: "http://host:port" (e.g., "http://localhost:11001")</li>
+     * </ul>
+     *
+     * @param host the hostname or IP address
+     * @param port the port number
+     * @param transport the transport protocol ("grpc", "jsonrpc", or "rest")
+     * @return the formatted server URL
      */
     private static String buildServerUrl(String host, int port, String transport) {
         return switch (transport) {
@@ -142,7 +185,9 @@ public class Main {
     }
     
     /**
-     * Print usage information and exit.
+     * Prints usage information and exits the program.
+     * <p>
+     * Displays help text with all available command-line options and examples.
      */
     private static void printUsageAndExit() {
         System.out.println("Usage: java -jar host.jar [OPTIONS]");

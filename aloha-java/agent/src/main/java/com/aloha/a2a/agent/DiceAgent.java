@@ -6,8 +6,25 @@ import io.quarkiverse.langchain4j.RegisterAiService;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * Dice Agent implementing A2A protocol with multi-transport support.
- * Uses Langchain4j for LLM integration with tool support.
+ * Dice Agent interface for A2A protocol implementation with LLM integration.
+ * <p>
+ * This interface is automatically implemented by Langchain4j through the {@code @RegisterAiService}
+ * annotation. It provides natural language processing capabilities using Ollama with the qwen2.5 model.
+ * <p>
+ * The agent can:
+ * <ul>
+ *   <li>Roll N-sided dice (e.g., "Roll a 20-sided dice")</li>
+ *   <li>Check if numbers are prime (e.g., "Is 17 prime?")</li>
+ *   <li>Perform combined operations (e.g., "Roll a dice and check if it's prime")</li>
+ *   <li>Support both English and Chinese language inputs</li>
+ * </ul>
+ * <p>
+ * The agent uses the {@link Tools} class for actual dice rolling and prime checking operations.
+ * The LLM decides which tools to call based on the user's natural language input.
+ *
+ * @see Tools
+ * @see DiceAgentExecutor
+ * @see io.quarkiverse.langchain4j.RegisterAiService
  */
 @RegisterAiService(tools = Tools.class)
 @ApplicationScoped
@@ -15,9 +32,25 @@ public interface DiceAgent {
 
     /**
      * Processes user messages and executes dice rolling and prime checking operations.
+     * <p>
+     * This method is the main entry point for the agent. It:
+     * <ol>
+     *   <li>Receives a natural language question from the user</li>
+     *   <li>Sends it to the LLM (Ollama with qwen2.5 model)</li>
+     *   <li>The LLM analyzes the request and decides which tools to call</li>
+     *   <li>Executes the appropriate tool(s) from {@link Tools}</li>
+     *   <li>Returns a natural language response to the user</li>
+     * </ol>
+     * <p>
+     * Example interactions:
+     * <ul>
+     *   <li>Input: "Roll a 20-sided dice" → Output: "The result is 13."</li>
+     *   <li>Input: "Is 17 prime?" → Output: "Yes, 17 is a prime number."</li>
+     *   <li>Input: "投掷一个6面骰子" → Output: "你投掷了一个6面骰子，结果是4。"</li>
+     * </ul>
      *
-     * @param question the user's question or request
-     * @return the agent's response
+     * @param question the user's question or request in natural language (English or Chinese)
+     * @return the agent's response in natural language, including tool execution results
      */
     @SystemMessage(
             """

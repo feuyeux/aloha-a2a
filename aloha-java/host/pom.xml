@@ -30,6 +30,11 @@
             <artifactId>a2a-java-sdk-client-transport-jsonrpc</artifactId>
             <version>${a2a.sdk.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.a2asdk</groupId>
+            <artifactId>a2a-java-sdk-client-transport-rest</artifactId>
+            <version>${a2a.sdk.version}</version>
+        </dependency>
         
         <!-- gRPC -->
         <dependency>
