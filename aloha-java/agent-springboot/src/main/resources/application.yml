@@ -1,0 +1,82 @@
+server:
+  port: 11002
+
+spring:
+  application:
+    name: dice-agent
+
+# Transport mode: grpc, jsonrpc, or rest
+transport:
+  mode: rest
+
+# gRPC configuration
+grpc:
+  server:
+    port: 11000
+    host: 0.0.0.0
+
+# Ollama configuration
+ollama:
+  base-url: http://localhost:11434
+  model: qwen2.5
+  temperature: 0.7
+  timeout: 60
+
+# Agent metadata
+agent:
+  name: Dice Agent (Spring Boot)
+  description: An agent that can roll arbitrary dice and check prime numbers
+  version: 1.0.0
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.aloha.a2a: DEBUG
+    io.grpc: WARN
+    io.netty: WARN
+    dev.langchain4j: INFO
+    org.springframework: INFO
+
+---
+# gRPC profile
+spring:
+  config:
+    activate:
+      on-profile: grpc
+
+server:
+  port: 8080  # HTTP server for agent card
+
+grpc:
+  server:
+    port: 11000  # gRPC server
+
+transport:
+  mode: grpc
+
+---
+# JSON-RPC profile
+spring:
+  config:
+    activate:
+      on-profile: jsonrpc
+
+server:
+  port: 11001
+
+transport:
+  mode: jsonrpc
+
+---
+# REST profile
+spring:
+  config:
+    activate:
+      on-profile: rest
+
+server:
+  port: 11002
+
+transport:
+  mode: rest
