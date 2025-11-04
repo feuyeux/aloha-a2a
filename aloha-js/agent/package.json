@@ -22,7 +22,7 @@
     "dependencies": {
         "@a2a-js/sdk": "^0.3.4",
         "express": "^4.21.2",
-        "ollama": "^0.5.0",
+        "ollama": "^0.6.2",
         "ws": "^8.18.0",
         "@grpc/grpc-js": "^1.12.4",
         "@grpc/proto-loader": "^0.7.13",
