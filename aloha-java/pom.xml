@@ -37,7 +37,7 @@
         
         <!-- Other dependencies -->
         <grpc.version>1.68.1</grpc.version>
-        <protobuf.version>4.31.1</protobuf.version>
+        <protobuf.version>4.33.0</protobuf.version>
         <jackson.version>2.18.1</jackson.version>
     </properties>
 
