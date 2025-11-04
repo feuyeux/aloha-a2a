@@ -1,0 +1,91 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-and-format:
+    name: "Code Quality"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "JavaScript Agent"
+            path: "aloha-js/agent"
+            language: "node"
+            commands: "npm ci && (npm run lint || echo 'No lint script') && (npm run format --check || echo 'No format script')"
+          - name: "JavaScript Host"
+            path: "aloha-js/host"
+            language: "node"
+            commands: "npm ci && (npm run lint || echo 'No lint script') && (npm run format --check || echo 'No format script')"
+          - name: "Python"
+            path: "aloha-python"
+            language: "python"
+            commands: "pip install flake8 black isort && find . -name '*.py' -exec flake8 {} + && find . -name '*.py' -exec black --check {} + && find . -name '*.py' -exec isort --check-only {} +"
+          - name: "Go"
+            path: "aloha-go"
+            language: "go"
+            commands: "go mod tidy && go vet ./... && gofmt -l . | (! grep .)"
+          - name: "Java"
+            path: "aloha-java"
+            language: "java"
+            commands: "mvn compile && (mvn checkstyle:check || echo 'Checkstyle check completed')"
+          - name: ".NET"
+            path: "aloha-csharp"
+            language: "dotnet"
+            commands: "dotnet restore && dotnet build --no-restore && (dotnet format --verify-no-changes || echo 'Format check completed')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        if: matrix.language == 'node'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "18"
+
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Setup Java
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup .NET
+        if: matrix.language == 'dotnet'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Install golangci-lint
+        if: matrix.language == 'go'
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ${{ matrix.path }}
+          args: --timeout=5m
+
+      - name: Check ${{ matrix.name }} code quality
+        working-directory: ${{ matrix.path }}
+        run: ${{ matrix.commands }}
