@@ -24,7 +24,7 @@
         "@a2a-js/sdk": "^0.3.4",
         "ws": "^8.18.0",
         "@grpc/grpc-js": "^1.12.4",
-        "@grpc/proto-loader": "^0.7.13",
+        "@grpc/proto-loader": "^0.8.0",
         "axios": "^1.7.9",
         "commander": "^12.1.0",
         "dotenv": "^17.2.3",
