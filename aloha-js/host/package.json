@@ -28,7 +28,7 @@
         "axios": "^1.7.9",
         "commander": "^14.0.2",
         "dotenv": "^17.2.3",
-        "uuid": "^11.0.3"
+        "uuid": "^13.0.0"
     },
     "devDependencies": {
         "@types/node": "^24.10.0",
