@@ -27,7 +27,7 @@
         "@grpc/grpc-js": "^1.12.4",
         "@grpc/proto-loader": "^0.8.0",
         "dotenv": "^17.2.3",
-        "uuid": "^11.0.3"
+        "uuid": "^13.0.0"
     },
     "devDependencies": {
         "@types/express": "^5.0.0",
