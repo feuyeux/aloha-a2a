@@ -1,6 +1,6 @@
 module github.com/aloha/a2a-go
 
-go 1.24.0
+go 1.24.1
 
 toolchain go1.24.2
 
@@ -8,7 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/ollama/ollama v0.12.6
+	github.com/ollama/ollama v0.12.10
 	google.golang.org/grpc v1.76.0
 )
 
@@ -40,7 +40,7 @@ require (
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/tools v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
