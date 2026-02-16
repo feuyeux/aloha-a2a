@@ -8,7 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/ollama/ollama v0.15.6
+	github.com/ollama/ollama v0.16.1
 	google.golang.org/grpc v1.79.1
 )
 
