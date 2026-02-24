@@ -35,12 +35,17 @@ aloha-csharp/
 ### Agent
 - Microsoft.SemanticKernel v1.72.0 - LLM integration
 - Grpc.AspNetCore v2.76.0 - gRPC support (future)
+- Grpc.AspNetCore.Server v2.76.0 - gRPC server support (future)
+- Microsoft.AspNetCore.OpenApi v9.0.13 - OpenAPI endpoint support
 - System.Text.Json v10.0.3 - JSON serialization
 
 ### Host
 - Grpc.Net.Client v2.76.0 - gRPC client (future)
 - System.CommandLine v2.0.3 - CLI interface
 - System.Text.Json v10.0.3 - JSON serialization
+
+### Official SDK Reference
+- A2A .NET SDK: https://github.com/a2aproject/a2a-dotnet (recommend pinning to latest stable tag when integrating)
 
 ## Setup
 
@@ -372,6 +377,6 @@ Adjust temperature in `appsettings.json`:
 ## References
 
 - [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
-- [A2A C# SDK](https://github.com/a2asdk/a2a-csharp-sdk)
+- [A2A .NET SDK](https://github.com/a2aproject/a2a-dotnet)
 - [Semantic Kernel Documentation](https://learn.microsoft.com/en-us/semantic-kernel/)
 - [ASP.NET Core Documentation](https://learn.microsoft.com/en-us/aspnet/core/)

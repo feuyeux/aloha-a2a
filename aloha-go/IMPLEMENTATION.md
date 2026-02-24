@@ -34,6 +34,7 @@ aloha-a2a/aloha-go/
    - Free from external SDK version constraints
 
 2. **No Relative Paths**: The `go.mod` uses absolute module paths (`github.com/aloha/a2a-go`) to ensure the project can be maintained independently without relative path dependencies.
+3. **A2A Go SDK upstream tracking**: Keep implementation behavior aligned with https://github.com/a2aproject/a2a-go and prefer syncing with its latest stable tag during dependency upgrades.
 
 3. **Unified Module**: Both agent and host share the same Go module, allowing them to share the protocol package efficiently.
 
@@ -152,7 +153,6 @@ require (
     github.com/gin-gonic/gin v1.10.0        // HTTP server framework
     github.com/google/uuid v1.6.0           // UUID generation
     github.com/gorilla/websocket v1.5.3     // WebSocket support
-    github.com/joho/godotenv v1.5.1         // Environment variables
     google.golang.org/grpc v1.68.1          // gRPC support
     google.golang.org/protobuf v1.35.2      // Protocol buffers
 )
@@ -163,7 +163,7 @@ require (
 - **gin**: Lightweight, fast HTTP framework for REST endpoints
 - **uuid**: Standard UUID generation for message and task IDs
 - **websocket**: WebSocket support for JSON-RPC 2.0 transport
-- **godotenv**: Easy environment variable management
+- **ollama**: Ollama API client integration
 - **grpc**: Official gRPC implementation for Go
 - **protobuf**: Required by gRPC
 
