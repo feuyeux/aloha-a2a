@@ -49,11 +49,11 @@ aloha-csharp/
 
 ## Setup
 
-### 1. Install .NET 8.0 SDK
+### 1. Install .NET 9.0 SDK
 
 ```bash
 # macOS with Homebrew
-brew install dotnet@8
+brew install dotnet@9
 
 # Verify installation
 dotnet --version

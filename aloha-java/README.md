@@ -7,7 +7,7 @@ A Java implementation of the A2A (Agent-to-Agent) protocol with support for thre
 - **Three Transport Modes**: gRPC, JSON-RPC, and REST (HTTP+JSON)
 - **LLM Integration**: Uses Ollama with qwen2.5 model for natural language understanding
 - **Tool Support**: Roll dice and check prime numbers
-- **A2A Protocol**: Fully compliant with A2A Protocol v0.3.0
+- **A2A SDK**: Uses A2A Java SDK v0.3.3.Final (compatible with A2A Protocol v0.3.x)
 
 ## Port Configuration
 
