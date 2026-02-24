@@ -681,7 +681,7 @@ go build ./...
 1. Check language-specific README files
 2. Review agent logs
 3. Test agent card endpoint
-4. Verify A2A SDK versions
+4. Verify A2A SDK versions (especially [a2a-dotnet](https://github.com/a2aproject/a2a-dotnet/tags) and [a2a-go](https://github.com/a2aproject/a2a-go/tags), and align with latest stable tag)
 5. Consult [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
 
 ## Documentation

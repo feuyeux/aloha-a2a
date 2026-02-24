@@ -34,11 +34,13 @@ aloha-go/
 - github.com/gin-gonic/gin - HTTP server framework
 - github.com/google/uuid - UUID generation
 - github.com/gorilla/websocket - WebSocket support
-- github.com/joho/godotenv - Environment variables
+- github.com/ollama/ollama - Ollama API client
 - google.golang.org/grpc - gRPC support
 - google.golang.org/protobuf - Protocol buffers
 
-**Note**: This implementation uses a self-contained protocol package instead of depending on an external A2A SDK, making it independent and easy to maintain.
+### Official SDK Reference
+
+- A2A Go SDK: https://github.com/a2aproject/a2a-go (recommend pinning to latest stable tag when integrating)
 
 ## Setup
 
