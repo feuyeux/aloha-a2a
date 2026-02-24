@@ -24,13 +24,13 @@ The Agent-to-Agent (A2A) protocol is a standardized communication protocol that 
 
 ## Language Implementations
 
-| Language | Agent | Host | SDK Version |
-|----------|-------|------|-------------|
-| Java | ✓ | ✓ | v0.3.0.Beta2 |
-| Python | ✓ | ✓ | v0.3.10 |
-| JavaScript/TypeScript | ✓ | ✓ | v0.3.4 |
-| C# | ✓ | ✓ | v0.3.3-preview |
-| Go | ✓ | ✓ | latest |
+| Language | Agent | Host | SDK Version | SDK URL |
+|----------|-------|------|-------------|---------|
+| Java | ✓ | ✓ | v0.3.3.Final | https://github.com/a2asdk/a2a-java-sdk |
+| Python | ✓ | ✓ | v0.3.10 | https://github.com/a2aproject/a2a-python |
+| JavaScript/TypeScript | ✓ | ✓ | v0.3.4 | https://github.com/a2aproject/a2a-js |
+| C# | ✓ | ✓ | Custom implementation (no official SDK dependency) | https://github.com/a2asdk/a2a-csharp-sdk |
+| Go | ✓ | ✓ | Custom implementation (no official SDK dependency) | https://github.com/a2aproject/a2a-go |
 
 ## Directory Structure
 
@@ -55,8 +55,8 @@ Before getting started, ensure you have the following installed:
 - **Java**: JDK 21+ and Maven 3.8+ (for Java implementation)
 - **Python**: Python 3.11+ and pip or uv (for Python implementation)
 - **Node.js**: Node.js 18+ and npm (for JavaScript implementation)
-- **.NET**: .NET 8.0+ SDK (for C# implementation)
-- **Go**: Go 1.21+ (for Go implementation)
+- **.NET**: .NET 9.0+ SDK (for C# implementation)
+- **Go**: Go 1.24+ (for Go implementation)
 
 #### Installing Ollama
 
