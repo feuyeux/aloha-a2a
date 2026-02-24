@@ -33,22 +33,22 @@ aloha-csharp/
 ## Dependencies
 
 ### Agent
-- Microsoft.SemanticKernel v1.30.0 - LLM integration
-- Grpc.AspNetCore v2.70.0 - gRPC support (future)
-- System.Text.Json v8.0.5 - JSON serialization
+- Microsoft.SemanticKernel v1.72.0 - LLM integration
+- Grpc.AspNetCore v2.76.0 - gRPC support (future)
+- System.Text.Json v10.0.3 - JSON serialization
 
 ### Host
-- Grpc.Net.Client v2.70.0 - gRPC client (future)
-- System.CommandLine v2.0.0-beta4 - CLI interface
-- System.Text.Json v8.0.5 - JSON serialization
+- Grpc.Net.Client v2.76.0 - gRPC client (future)
+- System.CommandLine v2.0.3 - CLI interface
+- System.Text.Json v10.0.3 - JSON serialization
 
 ## Setup
 
-### 1. Install .NET 8.0 SDK
+### 1. Install .NET 9.0 SDK
 
 ```bash
 # macOS with Homebrew
-brew install dotnet@8
+brew install dotnet@9
 
 # Verify installation
 dotnet --version
