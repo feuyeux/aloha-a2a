@@ -162,3 +162,17 @@ class Client:
             await self.httpx_client.aclose()
         
         logger.info("Resource cleanup completed")
+
+    async def probe_transports(self) -> dict:
+        """
+        Probe transport capabilities from the agent.
+
+        Returns:
+            Transport capability matrix from `/v1/transports`
+        """
+        if not self.httpx_client:
+            raise RuntimeError("Client not initialized. Call initialize() first.")
+
+        response = await self.httpx_client.get(f"{self.server_url}/v1/transports")
+        response.raise_for_status()
+        return response.json()

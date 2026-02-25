@@ -1,4 +1,4 @@
-# Aloha A2A Multi-Language Implementation
+﻿# Aloha A2A Multi-Language Implementation
 
 This project provides complete **Agent-to-Agent (A2A)** protocol implementations in five programming languages: **Java**, **Python**, **JavaScript/TypeScript**, **C#**, and **Go**.
 
@@ -7,7 +7,6 @@ The [A2A protocol](https://a2a-protocol.org) standardizes communication between 
 ## 🚀 Features
 
 - **Multi-Language Support**: Full implementations in 5 major languages.
-- **Three Transport Protocols**: Support for **JSON-RPC 2.0**, **gRPC**, and **HTTP/REST**.
 - **Interoperability**: Any host (client) can communicate with any agent (server) across languages.
 - **Streaming**: Real-time bidirectional data flow support.
 - **Standardized**: Adheres to the A2A specification for message formats and transport.
@@ -18,11 +17,11 @@ Each directory contains a complete Agent and Host implementation with its own de
 
 | Language | Agent | Host | SDK Version | SDK URL |
 |----------|-------|------|-------------|---------|
-| Java | ✓ | ✓ | v0.3.3.Final | https://github.com/a2asdk/a2a-java-sdk |
-| Python | ✓ | ✓ | v0.3.10 | https://github.com/a2aproject/a2a-python |
-| JavaScript/TypeScript | ✓ | ✓ | v0.3.4 | https://github.com/a2aproject/a2a-js |
-| C# | ✓ | ✓ | | https://github.com/a2asdk/a2a-csharp-sdk |
-| Go | ✓ | ✓ | | https://github.com/a2aproject/a2a-go |
+| Java | ✓ | ✓ | v0.3.3.Final | <https://github.com/a2asdk/a2a-java-sdk> |
+| Python | ✓ | ✓ | v0.3.10 | <https://github.com/a2aproject/a2a-python> |
+| JavaScript/TypeScript | ✓ | ✓ | v0.3.4 | <https://github.com/a2aproject/a2a-js> |
+| C# | ✓ | ✓ | | <https://github.com/a2asdk/a2a-csharp-sdk> |
+| Go | ✓ | ✓ | | <https://github.com/a2aproject/a2a-go> |
 
 ## 🛠️ Prerequisites
 
@@ -46,7 +45,14 @@ To prevent conflicts when running multiple agents simultaneously, each language 
 | **JS/TS** | 14000 | 14001 | 14002 |
 | **C#** | 15000 | 15001 | 15002 |
 
-👉 **See [PORT_CONFIGURATION.md](PORT_CONFIGURATION.md) for full details.**
+Configure ports via environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|--------|
+| `GRPC_PORT` | gRPC transport port | language default |
+| `JSONRPC_PORT` | JSON-RPC transport port | language default |
+| `REST_PORT` | REST transport port | language default |
+| `HOST` | Bind address | `0.0.0.0` |
 
 ## 🏃 Quick Start
 

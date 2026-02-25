@@ -1,10 +1,10 @@
 # Python A2A Implementation
 
-This directory contains Python implementations of both A2A agent (server) and host (client) with multi-transport support.
+This directory contains Python implementations of both A2A agent (server) and host (client) with REST-first support.
 
 ## Features
 
-- **Multi-Transport Support**: JSON-RPC 2.0, gRPC, and REST
+- **Transport Support**: REST (implemented); JSON-RPC/gRPC are not yet fully wired in this host
 - **Streaming Responses**: Real-time event streaming
 - **LLM Integration**: Ollama with qwen2.5 model
 - **Tool Support**: Dice rolling and prime number checking
@@ -117,6 +117,7 @@ uv run python -m agent
 ### Agent Card
 
 The agent card is available at:
+
 ```
 http://localhost:13002/.well-known/agent-card.json
 ```
@@ -154,10 +155,19 @@ uv run python __main__.py --help
 ```
 
 Options:
+
 - `--host`: Agent hostname (default: localhost)
-- `--port`: Agent port (default: 13000 for gRPC, 13001 for JSON-RPC, 13002 for REST)
-- `--transport`: Transport protocol (default: grpc)
+- `--port`: Agent port (default: 13002 for REST, 13001 for JSON-RPC, 13000 for gRPC)
+- `--transport`: Transport protocol (default: rest)
 - `--message`: Message to send (default: "Roll a 6-sided dice")
+- `--probe`: Query `GET /v1/transports` and print capability matrix
+
+### Transport Capability Probe
+
+```bash
+curl http://localhost:13002/v1/transports
+uv run python __main__.py --transport rest --port 13002 --probe
+```
 
 **Note**: The host currently has some compatibility issues with the A2A SDK. For testing, use the provided test script or direct API calls.
 
@@ -296,6 +306,7 @@ ruff check .
 ### Agent won't start
 
 1. Check if ports are available:
+
    ```bash
    lsof -i :13000
    lsof -i :11001
@@ -303,12 +314,14 @@ ruff check .
    ```
 
 2. Check dependencies:
+
    ```bash
    pip list | grep a2a
    pip list | grep ollama
    ```
 
 3. Verify Ollama is installed and running:
+
    ```bash
    ollama list
    ```
@@ -316,6 +329,7 @@ ruff check .
 ### Host can't connect
 
 1. Verify agent is running:
+
    ```bash
    curl http://localhost:11002/.well-known/agent-card.json
    ```
@@ -330,21 +344,25 @@ ruff check .
 **Error: "Failed to connect to Ollama"**
 
 1. Check if Ollama is running:
+
    ```bash
    ollama list
    ```
 
 2. If not running, start Ollama:
+
    ```bash
    ollama serve
    ```
 
 3. Test Ollama connection:
+
    ```bash
    curl http://localhost:11434/api/tags
    ```
 
 4. Check Ollama logs for errors:
+
    ```bash
    # macOS/Linux
    journalctl -u ollama -f
@@ -353,11 +371,13 @@ ruff check .
 **Error: "Model 'qwen2.5' not found"**
 
 1. Pull the model:
+
    ```bash
    ollama pull qwen2.5
    ```
 
 2. Verify the model is available:
+
    ```bash
    ollama list
    ```
@@ -365,12 +385,14 @@ ruff check .
 **Poor Response Quality**
 
 1. Try a larger model variant:
+
    ```bash
    ollama pull qwen2.5:14b
    export OLLAMA_MODEL=qwen2.5:14b
    ```
 
 2. Adjust temperature in .env file:
+
    ```bash
    OLLAMA_TEMPERATURE=0.5  # Lower for more deterministic responses
    ```
@@ -379,10 +401,12 @@ ruff check .
 
 1. First request is slower (model loading) - subsequent requests are faster
 2. Consider using a smaller model for faster responses:
+
    ```bash
    ollama pull qwen2.5:7b
    export OLLAMA_MODEL=qwen2.5:7b
    ```
+
 3. Enable GPU acceleration if available (Ollama does this automatically)
 
 ## Cross-Language Testing

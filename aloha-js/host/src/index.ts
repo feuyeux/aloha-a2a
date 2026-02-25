@@ -17,12 +17,13 @@ async function main() {
 
     program
         .name('aloha-js-host')
-        .description('A2A Host client with multi-transport support')
+        .description('A2A Host client (REST transport)')
         .version('1.0.0')
-        .option('-t, --transport <type>', 'Transport protocol to use (jsonrpc, grpc, rest)', 'rest')
+        .option('-t, --transport <type>', 'Transport protocol to use (rest)', 'rest')
         .option('-h, --host <hostname>', 'Agent hostname', 'localhost')
-        .option('-p, --port <port>', 'Agent port (default: 14000 for gRPC, 14001 for JSON-RPC, 14002 for REST)')
+        .option('-p, --port <port>', 'Agent port (default: 14002 for REST)')
         .option('-m, --message <text>', 'Message to send')
+        .option('--probe', 'Probe transport capabilities and exit')
         .option('-c, --context <id>', 'Context ID for conversation continuity')
         .parse(process.argv);
 
@@ -35,28 +36,16 @@ async function main() {
     // Set default port based on transport if not specified
     let port = options.port;
     if (!port) {
-        if (transport === 'grpc') {
-            port = '14000';
-        } else if (transport === 'jsonrpc') {
-            port = '14001';
-        } else if (transport === 'rest') {
-            port = '14002';
-        }
+        port = '14002';
     }
 
-    if (transport === 'rest') {
-        serverUrl = `http://${options.host}:${port}`;
-    } else if (transport === 'grpc') {
-        serverUrl = `${options.host}:${port}`;
-        console.warn('Note: gRPC transport support in @a2a-js/sdk may be limited');
-    } else if (transport === 'jsonrpc') {
-        serverUrl = `ws://${options.host}:${port}`;
-        console.warn('Note: JSON-RPC transport support in @a2a-js/sdk may be limited');
-    } else {
+    if (transport !== 'rest') {
         console.error(`Unsupported transport: ${transport}`);
-        console.error('Supported transports: jsonrpc, grpc, rest');
+        console.error('This host currently supports only: rest');
         process.exit(1);
     }
+
+    serverUrl = `http://${options.host}:${port}`;
 
     console.log('='.repeat(60));
     console.log('A2A Host Client');
@@ -70,6 +59,18 @@ async function main() {
         // Create and initialize client
         const client = new Client(serverUrl, transport);
         await client.initialize();
+
+        if (options.probe) {
+            const capabilities = await client.probeTransports();
+            console.log('');
+            console.log('='.repeat(60));
+            console.log('Transport Capabilities:');
+            console.log('='.repeat(60));
+            console.log(JSON.stringify(capabilities, null, 2));
+            console.log('='.repeat(60));
+            await client.close();
+            return;
+        }
 
         console.log('');
 

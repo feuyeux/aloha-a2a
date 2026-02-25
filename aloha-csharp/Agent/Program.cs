@@ -1,5 +1,6 @@
 using Aloha.A2A.Agent;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,20 +39,22 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-var configuration = app.Services.GetRequiredService<IConfiguration>();
+var experimentalTransportsEnabled =
+    string.Equals(Environment.GetEnvironmentVariable("A2A_EXPERIMENTAL_TRANSPORTS"), "1", StringComparison.Ordinal);
 
-var grpcPort = configuration.GetValue<int>("Ports:Grpc", 15000);
-var jsonRpcPort = configuration.GetValue<int>("Ports:JsonRpc", 15001);
-
-logger.LogInformation("Starting Dice Agent with multi-transport support");
+logger.LogInformation("Starting Dice Agent with REST transport support");
 logger.LogInformation("=".PadRight(60, '='));
-logger.LogInformation("Dice Agent is running with the following transports:");
+logger.LogInformation("Dice Agent is running with the following transport:");
 logger.LogInformation("  - REST:         http://localhost:{RestPort}", restPort);
 logger.LogInformation("  - Agent Card:   http://localhost:{RestPort}/.well-known/agent-card.json", restPort);
-logger.LogInformation("");
-logger.LogInformation("Note: JSON-RPC and gRPC transports require A2A SDK support");
-logger.LogInformation("  - JSON-RPC would be on port: {JsonRpcPort}", jsonRpcPort);
-logger.LogInformation("  - gRPC would be on port: {GrpcPort}", grpcPort);
+if (experimentalTransportsEnabled)
+{
+    logger.LogInformation("  - Experimental transport mode enabled (SDK transport POC wiring pending)");
+}
+else
+{
+    logger.LogInformation("  - Experimental transports disabled (set A2A_EXPERIMENTAL_TRANSPORTS=1 for POC mode)");
+}
 logger.LogInformation("=".PadRight(60, '='));
 
 app.UseCors();
@@ -109,6 +112,117 @@ app.MapGet("/.well-known/agent-card.json", (DiceAgent agent) =>
     return Results.Json(agent.GetAgentCard());
 });
 
+app.MapGet("/v1/transports", () =>
+{
+    logger.LogDebug("Received GET /v1/transports request");
+    return Results.Json(new
+    {
+        rest = new
+        {
+            implemented = true,
+            stream = true
+        },
+        jsonrpc = new
+        {
+            enabled = experimentalTransportsEnabled,
+            implemented = experimentalTransportsEnabled,
+            stream = false
+        },
+        grpc = new
+        {
+            enabled = experimentalTransportsEnabled,
+            implemented = false,
+            stream = false
+        },
+        experimentalTransports = experimentalTransportsEnabled
+    });
+});
+
+if (experimentalTransportsEnabled)
+{
+    app.MapPost("/jsonrpc", async (HttpContext context) =>
+    {
+        logger.LogDebug("Received POST /jsonrpc request");
+
+        JsonRpcRequest? request;
+        try
+        {
+            request = await context.Request.ReadFromJsonAsync<JsonRpcRequest>();
+        }
+        catch
+        {
+            return Results.Json(new JsonRpcErrorResponse
+            {
+                Jsonrpc = "2.0",
+                Error = new JsonRpcError { Code = -32700, Message = "Parse error" },
+                Id = null
+            });
+        }
+
+        if (request == null || request.Jsonrpc != "2.0" || string.IsNullOrWhiteSpace(request.Method))
+        {
+            return Results.Json(new JsonRpcErrorResponse
+            {
+                Jsonrpc = "2.0",
+                Error = new JsonRpcError { Code = -32600, Message = "Invalid Request" },
+                Id = request?.Id
+            });
+        }
+
+        if (request.Method == "message/stream")
+        {
+            return Results.Json(new JsonRpcErrorResponse
+            {
+                Jsonrpc = "2.0",
+                Error = new JsonRpcError { Code = -32001, Message = "message/stream is not implemented on C# JSON-RPC transport" },
+                Id = request.Id
+            });
+        }
+
+        if (request.Method != "message/send")
+        {
+            return Results.Json(new JsonRpcErrorResponse
+            {
+                Jsonrpc = "2.0",
+                Error = new JsonRpcError { Code = -32601, Message = "Method not found" },
+                Id = request.Id
+            });
+        }
+
+        var message = request.Params?.Message;
+        if (message == null)
+        {
+            return Results.Json(new JsonRpcErrorResponse
+            {
+                Jsonrpc = "2.0",
+                Error = new JsonRpcError { Code = -32602, Message = "Invalid params" },
+                Id = request.Id
+            });
+        }
+
+        try
+        {
+            var task = await transportHandler.ExecuteMessageSendAsync(message);
+            return Results.Json(new JsonRpcSuccessResponse
+            {
+                Jsonrpc = "2.0",
+                Result = task,
+                Id = request.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "JSON-RPC message/send execution failed");
+            return Results.Json(new JsonRpcErrorResponse
+            {
+                Jsonrpc = "2.0",
+                Error = new JsonRpcError { Code = -32603, Message = "Internal error" },
+                Id = request.Id
+            });
+        }
+    });
+}
+
 // Health check endpoint
 app.MapGet("/health", () =>
 {
@@ -119,3 +233,57 @@ app.MapGet("/health", () =>
 logger.LogInformation("Dice Agent started successfully");
 
 app.Run();
+
+internal sealed class JsonRpcRequest
+{
+    [JsonPropertyName("jsonrpc")]
+    public string Jsonrpc { get; set; } = string.Empty;
+
+    [JsonPropertyName("method")]
+    public string Method { get; set; } = string.Empty;
+
+    [JsonPropertyName("params")]
+    public JsonRpcParams? Params { get; set; }
+
+    [JsonPropertyName("id")]
+    public object? Id { get; set; }
+}
+
+internal sealed class JsonRpcParams
+{
+    [JsonPropertyName("message")]
+    public Message? Message { get; set; }
+}
+
+internal sealed class JsonRpcSuccessResponse
+{
+    [JsonPropertyName("jsonrpc")]
+    public string Jsonrpc { get; set; } = "2.0";
+
+    [JsonPropertyName("result")]
+    public object? Result { get; set; }
+
+    [JsonPropertyName("id")]
+    public object? Id { get; set; }
+}
+
+internal sealed class JsonRpcErrorResponse
+{
+    [JsonPropertyName("jsonrpc")]
+    public string Jsonrpc { get; set; } = "2.0";
+
+    [JsonPropertyName("error")]
+    public JsonRpcError Error { get; set; } = new();
+
+    [JsonPropertyName("id")]
+    public object? Id { get; set; }
+}
+
+internal sealed class JsonRpcError
+{
+    [JsonPropertyName("code")]
+    public int Code { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+}

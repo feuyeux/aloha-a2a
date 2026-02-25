@@ -1,7 +1,5 @@
 # Aloha A2A - Java Agent2 (Spring Boot Implementation)
 
-!!! NO PASS !!!
-
 A complete Java implementation of the A2A (Agent-to-Agent) protocol using Spring Boot instead of Quarkus. This module provides the same functionality as the original agent but with Spring Boot framework.
 
 ## Features
@@ -39,16 +37,19 @@ mvn clean package
 ```
 
 Or:
+
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=grpc
 ```
 
 Or with JAR:
+
 ```bash
 java -jar target/aloha-java-agent2-1.0.0.jar --spring.profiles.active=grpc
 ```
 
 **Endpoints**:
+
 - gRPC: `localhost:11000`
 - Agent Card: `http://localhost:11000/.well-known/agent-card.json`
 
@@ -59,16 +60,19 @@ java -jar target/aloha-java-agent2-1.0.0.jar --spring.profiles.active=grpc
 ```
 
 Or:
+
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=jsonrpc
 ```
 
 Or with JAR:
+
 ```bash
 java -jar target/aloha-java-agent2-1.0.0.jar --spring.profiles.active=jsonrpc
 ```
 
 **Endpoints**:
+
 - JSON-RPC (WebSocket): `ws://localhost:11001`
 - Agent Card: `http://localhost:11001/.well-known/agent-card.json`
 
@@ -79,16 +83,19 @@ java -jar target/aloha-java-agent2-1.0.0.jar --spring.profiles.active=jsonrpc
 ```
 
 Or:
+
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=rest
 ```
 
 Or with JAR:
+
 ```bash
 java -jar target/aloha-java-agent2-1.0.0.jar --spring.profiles.active=rest
 ```
 
 **Endpoints**:
+
 - REST (HTTP+JSON): `http://localhost:11002`
 - Agent Card: `http://localhost:11002/.well-known/agent-card.json`
 
@@ -97,7 +104,7 @@ java -jar target/aloha-java-agent2-1.0.0.jar --spring.profiles.active=rest
 1. **roll_dice(N)**: Rolls an N-sided dice
    - Example: "Roll a 20-sided dice"
    - Example (Chinese): "投掷一个6面骰子"
-   
+
 2. **check_prime(nums)**: Checks if numbers are prime
    - Example: "Check if 2, 4, 7, 9, 11 are prime"
    - Example (Chinese): "检查17是否为质数"
@@ -205,6 +212,7 @@ ollama pull qwen2.5
 ### Ollama Connection Issues
 
 Ensure Ollama is running:
+
 ```bash
 ollama serve
 ollama pull qwen2.5

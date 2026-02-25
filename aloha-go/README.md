@@ -25,7 +25,6 @@ aloha-go/
 │   └── README.md
 ├── go.mod              # Go module file
 ├── go.sum              # Go dependencies checksum
-├── IMPLEMENTATION.md   # Detailed implementation notes
 └── README.md           # This file
 ```
 
@@ -40,7 +39,7 @@ aloha-go/
 
 ### Official SDK Reference
 
-- A2A Go SDK: https://github.com/a2aproject/a2a-go (recommend pinning to latest stable tag when integrating)
+- A2A Go SDK: <https://github.com/a2aproject/a2a-go> (recommend pinning to latest stable tag when integrating)
 
 ## Setup
 
@@ -88,7 +87,15 @@ HOST=0.0.0.0
 
 ## Running the Agent
 
-The agent starts three transport servers simultaneously:
+The agent starts REST transport by default. JSON-RPC/gRPC are behind an experimental gate:
+
+```bash
+export A2A_EXPERIMENTAL_TRANSPORTS=1
+```
+
+Without this flag, agent/host operate in REST-only mode.
+
+When experimental mode is enabled, agent starts three transport servers:
 
 ```bash
 cd agent
@@ -98,6 +105,7 @@ go run .
 ```
 
 The agent will be available on:
+
 - gRPC: `localhost:12000`
 - JSON-RPC 2.0: `ws://localhost:12001`
 - REST: `http://localhost:12002`
@@ -115,12 +123,14 @@ cd host
 ### JSON-RPC 2.0 Transport
 
 ```bash
+export A2A_EXPERIMENTAL_TRANSPORTS=1
 ./host --transport jsonrpc --port 12001 --message "Roll a 6-sided dice"
 ```
 
 ### gRPC Transport
 
 ```bash
+export A2A_EXPERIMENTAL_TRANSPORTS=1
 ./host --transport grpc --port 12000 --message "Is 17 prime?"
 ```
 
@@ -141,6 +151,7 @@ cd host
 ### Agent Configuration
 
 Environment variables (optional):
+
 - `GRPC_PORT`: gRPC port (default: 12000)
 - `JSONRPC_PORT`: JSON-RPC port (default: 12001)
 - `REST_PORT`: REST port (default: 12002)
@@ -149,11 +160,20 @@ Environment variables (optional):
 ### Host Configuration
 
 Command-line arguments:
+
 - `--transport <jsonrpc|grpc|rest>`: Transport protocol (default: rest)
 - `--host <hostname>`: Agent hostname (default: localhost)
 - `--port <port>`: Agent port (auto-selected based on transport)
 - `--message <text>`: Message to send to the agent (required)
 - `--stream`: Enable streaming response (default: false)
+- `--probe`: Query `GET /v1/transports` and print capability matrix
+
+### Capability Probe
+
+```bash
+./host --transport rest --port 12002 --probe
+curl http://localhost:12002/v1/transports
+```
 
 ## Features
 
@@ -161,7 +181,7 @@ Command-line arguments:
 
 1. **roll_dice(N)**: Rolls an N-sided dice
    - Example: "Roll a 20-sided dice"
-   
+
 2. **check_prime(nums)**: Checks if numbers are prime
    - Example: "Check if 2, 4, 7, 9, 11 are prime"
 
@@ -171,7 +191,8 @@ Command-line arguments:
 - ✅ Task status tracking
 - ✅ Agent card discovery
 - ✅ Session management (contextID)
-- ✅ Multi-transport support (JSON-RPC, gRPC, REST)
+- ✅ REST transport support (send/stream)
+- ⚠️ JSON-RPC transport (`message/send` validated POC; `message/stream` returns explicit unsupported error)
 - ⚠️ Task cancellation (infrastructure ready, not fully implemented)
 - ⚠️ gRPC transport (infrastructure ready, uses placeholder logic)
 
@@ -224,11 +245,13 @@ uv run python -m host --transport rest --port 12002 --message "Roll a dice"
 ### Port Already in Use
 
 If ports are already in use, set different ports via environment variables:
+
 ```bash
 JSONRPC_PORT=12000 GRPC_PORT=12001 REST_PORT=12002 ./agent
 ```
 
 Or kill the process using the port:
+
 ```bash
 lsof -ti:12000 | xargs kill -9
 ```
@@ -236,6 +259,7 @@ lsof -ti:12000 | xargs kill -9
 ### Module Download Issues
 
 Clean module cache and re-download:
+
 ```bash
 go clean -modcache
 go mod download
@@ -244,6 +268,7 @@ go mod download
 ### Build Errors
 
 Ensure all dependencies are up to date:
+
 ```bash
 go mod tidy
 go mod download
@@ -251,7 +276,6 @@ go mod download
 
 ## Documentation
 
-- [IMPLEMENTATION.md](./IMPLEMENTATION.md) - Detailed implementation notes
 - [agent/README.md](./agent/README.md) - Agent documentation
 - [host/README.md](./host/README.md) - Host documentation
 

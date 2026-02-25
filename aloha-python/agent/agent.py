@@ -1,4 +1,4 @@
-"""Dice Agent with multi-transport support (JSON-RPC, gRPC, REST)."""
+"""Dice Agent with REST transport support."""
 
 import asyncio
 import logging
@@ -29,8 +29,7 @@ logger = logging.getLogger(__name__)
 
 class DiceAgent:
     """
-    Dice Agent implementing A2A protocol with multi-transport support.
-    Supports JSON-RPC 2.0, gRPC, and REST transports simultaneously.
+    Dice Agent implementing A2A protocol with REST transport support.
     """
     
     def __init__(
@@ -74,7 +73,7 @@ class DiceAgent:
             AgentCard with agent metadata
         """
         return AgentCard(
-            protocol_version="1.0",
+            protocol_version="0.3.0",
             name=os.getenv("AGENT_NAME", "Dice Agent"),
             description=os.getenv("AGENT_DESCRIPTION", "An agent that can roll arbitrary dice and check prime numbers"),
             url=f"http://localhost:{self.rest_port}",
@@ -116,7 +115,7 @@ class DiceAgent:
     
     async def start(self):
         """Start all transport servers."""
-        logger.info("Starting Dice Agent with multi-transport support")
+        logger.info("Starting Dice Agent with REST transport support")
         
         # Create task store
         task_store = InMemoryTaskStore()
@@ -134,6 +133,26 @@ class DiceAgent:
                 http_handler=request_handler
             )
             app = rest_app.build()
+
+            @app.get("/v1/transports")
+            async def get_transport_capabilities():
+                return {
+                    "rest": {
+                        "implemented": True,
+                        "stream": True,
+                    },
+                    "jsonrpc": {
+                        "enabled": False,
+                        "implemented": False,
+                        "stream": False,
+                    },
+                    "grpc": {
+                        "enabled": False,
+                        "implemented": False,
+                        "stream": False,
+                    },
+                    "experimentalTransports": False,
+                }
             
             logger.info(f"REST transport configured on {self.host}:{self.rest_port}")
             
@@ -148,13 +167,9 @@ class DiceAgent:
             self.servers.append(server)
             
             logger.info("=" * 60)
-            logger.info("Dice Agent is running with the following transports:")
+            logger.info("Dice Agent is running with the following transport:")
             logger.info(f"  - REST:         http://{self.host}:{self.rest_port}")
             logger.info(f"  - Agent Card:   http://{self.host}:{self.rest_port}/.well-known/agent-card.json")
-            logger.info("")
-            logger.info("Note: JSON-RPC and gRPC transports require additional configuration")
-            logger.info(f"  - JSON-RPC would be on port: {self.jsonrpc_port}")
-            logger.info(f"  - gRPC would be on port: {self.grpc_port}")
             logger.info("=" * 60)
             
             await server.serve()

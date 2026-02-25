@@ -1,113 +1,91 @@
-using System.CommandLine;
 using Aloha.A2A.Host;
 
-// Create root command
-var rootCommand = new RootCommand("A2A Host Client - Communicate with A2A agents");
+const string ExperimentalTransportsEnv = "A2A_EXPERIMENTAL_TRANSPORTS";
 
-// Add options
-var transportOption = new Option<string>(
-    name: "--transport",
-    description: "Transport protocol to use (rest, grpc, jsonrpc)",
-    getDefaultValue: () => "rest");
-transportOption.AddAlias("-t");
+var options = ParseArgs(args);
 
-var hostOption = new Option<string>(
-    name: "--host",
-    description: "Agent hostname",
-    getDefaultValue: () => "localhost");
-hostOption.AddAlias("-h");
-
-var portOption = new Option<int?>(
-    name: "--port",
-    description: "Agent port (default: 15000 for gRPC, 15001 for JSON-RPC, 15002 for REST)");
-portOption.AddAlias("-p");
-
-var messageOption = new Option<string>(
-    name: "--message",
-    description: "Message to send to the agent");
-messageOption.AddAlias("-m");
-messageOption.IsRequired = true;
-
-var streamOption = new Option<bool>(
-    name: "--stream",
-    description: "Use streaming mode",
-    getDefaultValue: () => false);
-streamOption.AddAlias("-s");
-
-var contextOption = new Option<string?>(
-    name: "--context",
-    description: "Context ID for conversation continuity");
-contextOption.AddAlias("-c");
-
-// Add options to root command
-rootCommand.AddOption(transportOption);
-rootCommand.AddOption(hostOption);
-rootCommand.AddOption(portOption);
-rootCommand.AddOption(messageOption);
-rootCommand.AddOption(streamOption);
-rootCommand.AddOption(contextOption);
-
-// Set handler
-rootCommand.SetHandler(async (transport, host, port, message, stream, contextId) =>
+if (options.ShowHelp)
 {
-    try
+    PrintUsage();
+    return;
+}
+
+if (!options.Probe && string.IsNullOrWhiteSpace(options.Message))
+{
+    Console.WriteLine("--message is required unless --probe is set.");
+    Environment.Exit(1);
+    return;
+}
+
+var transport = options.Transport.ToLowerInvariant();
+var port = options.Port ?? transport switch
+{
+    "grpc" => 15000,
+    "jsonrpc" => 15002,
+    _ => 15002
+};
+
+Console.WriteLine("=".PadRight(60, '='));
+Console.WriteLine("A2A Host Client");
+Console.WriteLine($"Transport: {transport}");
+Console.WriteLine($"Agent: {options.Host}:{port}");
+Console.WriteLine($"Message: {options.Message}");
+Console.WriteLine($"Streaming: {options.Stream}");
+Console.WriteLine($"Probe: {options.Probe}");
+if (!string.IsNullOrEmpty(options.ContextId))
+{
+    Console.WriteLine($"Context ID: {options.ContextId}");
+}
+Console.WriteLine("=".PadRight(60, '='));
+Console.WriteLine();
+
+var experimentalTransportsEnabled =
+    string.Equals(Environment.GetEnvironmentVariable(ExperimentalTransportsEnv), "1", StringComparison.Ordinal);
+
+if (transport != "rest" && !experimentalTransportsEnabled)
+{
+    Console.WriteLine($"Transport '{transport}' requires experimental mode.");
+    Console.WriteLine($"Set {ExperimentalTransportsEnv}=1 to enable JSON-RPC/gRPC POC, or use --transport rest.");
+    Environment.Exit(1);
+    return;
+}
+
+try
+{
+    switch (transport)
     {
-        // Set default port based on transport if not specified
-        if (!port.HasValue)
-        {
-            port = transport.ToLower() switch
+        case "rest":
+            if (options.Probe)
             {
-                "grpc" => 15000,
-                "jsonrpc" => 15001,
-                "rest" => 15002,
-                _ => 15002
-            };
-        }
-        
-        Console.WriteLine("=".PadRight(60, '='));
-        Console.WriteLine($"A2A Host Client");
-        Console.WriteLine($"Transport: {transport}");
-        Console.WriteLine($"Agent: {host}:{port}");
-        Console.WriteLine($"Message: {message}");
-        Console.WriteLine($"Streaming: {stream}");
-        if (!string.IsNullOrEmpty(contextId))
-        {
-            Console.WriteLine($"Context ID: {contextId}");
-        }
-        Console.WriteLine("=".PadRight(60, '='));
-        Console.WriteLine();
-
-        switch (transport.ToLower())
-        {
-            case "rest":
-                await HandleRestTransport(host, port.Value, message, stream, contextId);
+                await HandleProbe(options.Host, port);
                 break;
+            }
 
-            case "grpc":
-                Console.WriteLine("gRPC transport is not yet implemented.");
-                Console.WriteLine("Please use REST transport with --transport rest");
-                break;
+            await HandleRestTransport(options.Host, port, options.Message ?? string.Empty, options.Stream, options.ContextId);
+            break;
 
-            case "jsonrpc":
-                Console.WriteLine("JSON-RPC transport is not yet implemented.");
-                Console.WriteLine("Please use REST transport with --transport rest");
-                break;
+        case "jsonrpc":
+            await HandleJsonRpcTransport(options.Host, port, options.Message ?? string.Empty, options.Stream, options.ContextId);
+            break;
 
-            default:
-                Console.WriteLine($"Unknown transport: {transport}");
-                Console.WriteLine("Supported transports: rest, grpc, jsonrpc");
-                break;
-        }
+        case "grpc":
+            Console.WriteLine("gRPC transport is in experimental mode but not yet implemented in this host.");
+            Console.WriteLine("Use --transport rest for production usage.");
+            Environment.Exit(1);
+            break;
+
+        default:
+            Console.WriteLine($"Unknown transport: {transport}");
+            Console.WriteLine("Supported transports: rest, grpc, jsonrpc");
+            Environment.Exit(1);
+            break;
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error: {ex.Message}");
-        Environment.Exit(1);
-    }
-}, transportOption, hostOption, portOption, messageOption, streamOption, contextOption);
-
-// Execute command
-return await rootCommand.InvokeAsync(args);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error: {ex.Message}");
+    Environment.Exit(1);
+}
 
 static async Task HandleRestTransport(string host, int port, string message, bool stream, string? contextId)
 {
@@ -214,4 +192,169 @@ static async Task HandleRestTransport(string host, int port, string message, boo
 
     Console.WriteLine();
     Console.WriteLine("Done.");
+}
+
+static async Task HandleProbe(string host, int port)
+{
+    var client = new RestClient(host, port);
+    var transportJson = await client.GetTransportCapabilitiesAsync();
+
+    Console.WriteLine();
+    Console.WriteLine("=".PadRight(60, '='));
+    Console.WriteLine("Transport Capabilities");
+    Console.WriteLine("=".PadRight(60, '='));
+    Console.WriteLine(transportJson);
+    Console.WriteLine("=".PadRight(60, '='));
+}
+
+static async Task HandleJsonRpcTransport(string host, int port, string message, bool stream, string? contextId)
+{
+    if (stream)
+    {
+        Console.WriteLine("JSON-RPC stream is not implemented yet in C# experimental transport.");
+        Environment.Exit(1);
+        return;
+    }
+
+    var client = new JsonRpcClient(host, port);
+
+    Console.WriteLine("Sending message via JSON-RPC experimental transport...");
+    var task = await client.SendMessageAsync(message, contextId);
+
+    if (task == null)
+    {
+        Console.WriteLine("No task returned from JSON-RPC response.");
+        Environment.Exit(1);
+        return;
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Task ID: {task.Id}");
+    Console.WriteLine($"Context ID: {task.ContextId}");
+    Console.WriteLine($"Status: {task.Status.State}");
+    Console.WriteLine();
+
+    var restClient = new RestClient(host, port);
+    var maxAttempts = 30;
+    var attempt = 0;
+    while (attempt < maxAttempts && task.Status.State != "completed" && task.Status.State != "failed" && task.Status.State != "canceled")
+    {
+        await Task.Delay(1000);
+        var latestTask = await restClient.GetTaskAsync(task.Id);
+        if (latestTask == null)
+        {
+            break;
+        }
+
+        task = latestTask;
+        Console.WriteLine($"Status: {task.Status.State}");
+        attempt++;
+    }
+
+    Console.WriteLine();
+
+    if (task.Status.Message?.Parts != null)
+    {
+        Console.WriteLine("Response:");
+        foreach (var part in task.Status.Message.Parts)
+        {
+            if (part.Kind == "text" && !string.IsNullOrWhiteSpace(part.Text))
+            {
+                Console.WriteLine(part.Text);
+            }
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("Done.");
+}
+
+static HostCliOptions ParseArgs(string[] args)
+{
+    var options = new HostCliOptions();
+
+    for (var index = 0; index < args.Length; index++)
+    {
+        var arg = args[index];
+
+        static string? NextValue(string[] values, ref int i)
+        {
+            if (i + 1 >= values.Length)
+            {
+                return null;
+            }
+
+            i++;
+            return values[i];
+        }
+
+        switch (arg)
+        {
+            case "--transport":
+            case "-t":
+                options.Transport = NextValue(args, ref index) ?? options.Transport;
+                break;
+            case "--host":
+            case "-h":
+                options.Host = NextValue(args, ref index) ?? options.Host;
+                break;
+            case "--port":
+            case "-p":
+                {
+                    var rawPort = NextValue(args, ref index);
+                    if (int.TryParse(rawPort, out var parsedPort))
+                    {
+                        options.Port = parsedPort;
+                    }
+                }
+                break;
+            case "--message":
+            case "-m":
+                options.Message = NextValue(args, ref index);
+                break;
+            case "--context":
+            case "-c":
+                options.ContextId = NextValue(args, ref index);
+                break;
+            case "--stream":
+            case "-s":
+                options.Stream = true;
+                break;
+            case "--probe":
+                options.Probe = true;
+                break;
+            case "--help":
+            case "-?":
+                options.ShowHelp = true;
+                break;
+        }
+    }
+
+    return options;
+}
+
+static void PrintUsage()
+{
+    Console.WriteLine("Usage: host --transport <jsonrpc|grpc|rest> --host <hostname> --port <port> --message <text> [--stream] [--probe]");
+    Console.WriteLine();
+    Console.WriteLine("Options:");
+    Console.WriteLine("  --transport, -t  Transport protocol (default: rest)");
+    Console.WriteLine("  --host, -h       Agent hostname (default: localhost)");
+    Console.WriteLine("  --port, -p       Agent port (default: 15002 for REST/JSON-RPC, 15000 for gRPC)");
+    Console.WriteLine("  --message, -m    Message to send");
+    Console.WriteLine("  --stream, -s     Use streaming mode");
+    Console.WriteLine("  --probe          Probe transport capabilities and exit (REST)");
+    Console.WriteLine("  --context, -c    Context ID for conversation continuity");
+}
+
+sealed class HostCliOptions
+{
+    public string Transport { get; set; } = "rest";
+    public string Host { get; set; } = "localhost";
+    public int? Port { get; set; }
+    public string? Message { get; set; }
+    public bool Stream { get; set; }
+    public bool Probe { get; set; }
+    public string? ContextId { get; set; }
+    public bool ShowHelp { get; set; }
 }

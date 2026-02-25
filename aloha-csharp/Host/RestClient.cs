@@ -194,4 +194,19 @@ public class RestClient
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
     }
+
+    /// <summary>
+    /// Get transport capability metadata
+    /// </summary>
+    public async Task<string> GetTransportCapabilitiesAsync()
+    {
+        var response = await _httpClient.GetAsync($"{_baseUrl}/v1/transports");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception($"Failed to get transport capabilities: {response.StatusCode}");
+        }
+
+        return await response.Content.ReadAsStringAsync();
+    }
 }

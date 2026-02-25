@@ -77,6 +77,7 @@ go run .
 ```
 
 The agent will start and listen on all three transports:
+
 - JSON-RPC 2.0: `ws://localhost:11000`
 - gRPC: `localhost:11001`
 - REST: `http://localhost:11002`
@@ -98,12 +99,13 @@ curl http://localhost:11002/.well-known/agent-card.json
 curl -X POST http://localhost:11002/v1/message:send \
   -H "Content-Type: application/json" \
   -d '{
-    "message": {
-      "kind": "message",
-      "role": "user",
-      "parts": [{"kind": "text", "text": "Roll a 20-sided dice"}]
-    }
+    "kind": "message",
+    "role": "user",
+    "parts": [{"kind": "text", "text": "Roll a 20-sided dice"}]
   }'
+
+# Probe transport capabilities
+curl http://localhost:11002/v1/transports
 ```
 
 ### JSON-RPC 2.0

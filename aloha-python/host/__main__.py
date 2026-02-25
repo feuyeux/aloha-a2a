@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+import json
 
 import click
 
@@ -44,26 +45,31 @@ def build_server_url(host: str, port: int, transport: str) -> str:
     '--port',
     type=int,
     default=None,
-    help='Agent port (default: 13000 for gRPC, 13001 for JSON-RPC, 13002 for REST)'
+    help='Agent port (default: 13002 for REST, 13001 for JSON-RPC, 13000 for gRPC)'
 )
 @click.option(
     '--transport',
     type=click.Choice(['jsonrpc', 'grpc', 'rest'], case_sensitive=False),
-    default='grpc',
-    help='Transport protocol (default: grpc)'
+    default='rest',
+    help='Transport protocol (default: rest)'
 )
 @click.option(
     '--message',
     default='Roll a 6-sided dice',
     help='Message to send (default: "Roll a 6-sided dice")'
 )
-def main(host: str, port: int, transport: str, message: str):
+@click.option(
+    '--probe',
+    is_flag=True,
+    help='Probe transport capabilities and exit'
+)
+def main(host: str, port: int, transport: str, message: str, probe: bool):
     """
     A2A Host client for sending messages to agents.
     
     Examples:
     
-      # Send message using gRPC (default)
+    # Send message using REST (default)
       python -m host --message "Roll a 20-sided dice"
     
       # Send message using JSON-RPC
@@ -74,12 +80,12 @@ def main(host: str, port: int, transport: str, message: str):
     """
     # Set default port based on transport if not specified
     if port is None:
-        if transport == 'grpc':
-            port = 13000
+        if transport == 'rest':
+            port = 13002
         elif transport == 'jsonrpc':
             port = 13001
-        elif transport == 'rest':
-            port = 13002
+        elif transport == 'grpc':
+            port = 13000
     
     # Build server URL
     server_url = build_server_url(host, port, transport)
@@ -89,13 +95,15 @@ def main(host: str, port: int, transport: str, message: str):
     logger.info(f"  Port: {port}")
     logger.info(f"  Transport: {transport}")
     logger.info(f"  Server URL: {server_url}")
-    logger.info(f"  Message: {message}")
+    logger.info(f"  Probe: {probe}")
+    if not probe:
+        logger.info(f"  Message: {message}")
     
     # Run async client
-    asyncio.run(run_client(server_url, transport, message))
+    asyncio.run(run_client(server_url, transport, message, probe))
 
 
-async def run_client(server_url: str, transport: str, message: str):
+async def run_client(server_url: str, transport: str, message: str, probe: bool):
     """
     Run the client asynchronously.
     
@@ -107,7 +115,21 @@ async def run_client(server_url: str, transport: str, message: str):
     client = Client(server_url, transport)
     
     try:
+        if transport != 'rest':
+            raise RuntimeError(
+                f"Transport '{transport}' is not fully supported by this host implementation. "
+                "Please use --transport rest."
+            )
+
         await client.initialize()
+
+        if probe:
+            capabilities = await client.probe_transports()
+            print("\n=== Transport Capabilities ===")
+            print(json.dumps(capabilities, indent=2, ensure_ascii=False))
+            print("==============================\n")
+            return
+
         response = await client.send_message(message)
         
         print("\n=== Agent Response ===")

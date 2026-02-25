@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Collections.Concurrent;
 
 namespace Aloha.A2A.Agent;
 
@@ -10,8 +11,9 @@ public class RestTransportHandler
 {
     private readonly IAgentExecutor _executor;
     private readonly ILogger<RestTransportHandler> _logger;
-    private readonly Dictionary<string, A2ATask> _a2aTasks = new();
-    private readonly Dictionary<string, List<Message>> _contexts = new();
+    private readonly ConcurrentDictionary<string, A2ATask> _a2aTasks = new();
+    private readonly ConcurrentDictionary<string, List<Message>> _contexts = new();
+    private readonly object _stateLock = new();
 
     public RestTransportHandler(
         IAgentExecutor executor,
@@ -24,70 +26,79 @@ public class RestTransportHandler
     /// <summary>
     /// Handle message send request
     /// </summary>
-    public async System.Threading.Tasks.Task<IResult> HandleMessageSend(Message message)
+    public async System.Threading.Tasks.Task<A2ATask> ExecuteMessageSendAsync(Message message)
     {
-        try
+        _logger.LogInformation("Received message: {MessageId}", message.MessageId);
+
+        var taskId = message.TaskId ?? Guid.NewGuid().ToString();
+        var contextId = message.ContextId ?? Guid.NewGuid().ToString();
+
+        // Create request context
+        var requestContext = new RequestContext
         {
-            _logger.LogInformation("Received message: {MessageId}", message.MessageId);
+            TaskId = taskId,
+            ContextId = contextId,
+            Messages = new List<Message> { message },
+            Metadata = message.Metadata
+        };
 
-            var taskId = message.TaskId ?? Guid.NewGuid().ToString();
-            var contextId = message.ContextId ?? Guid.NewGuid().ToString();
+        // Create event queue
+        var eventQueue = new InMemoryEventQueue();
 
-            // Create request context
-            var requestContext = new RequestContext
+        // Create initial task
+        var a2aTask = new A2ATask
+        {
+            Kind = "task",
+            Id = taskId,
+            ContextId = contextId,
+            Status = new TaskStatus
             {
-                TaskId = taskId,
-                ContextId = contextId,
-                Messages = new List<Message> { message },
-                Metadata = message.Metadata
-            };
+                State = "submitted",
+                Timestamp = DateTime.UtcNow
+            },
+            History = new List<Message> { message }
+        };
 
-            // Create event queue
-            var eventQueue = new InMemoryEventQueue();
+        _a2aTasks[taskId] = a2aTask;
 
-            // Create initial task
-            var a2aTask = new A2ATask
+        // Update context history
+        var contextMessages = _contexts.GetOrAdd(contextId, _ => new List<Message>());
+        lock (_stateLock)
+        {
+            contextMessages.Add(message);
+        }
+
+        // Execute asynchronously
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            await _executor.ExecuteAsync(requestContext, eventQueue);
+
+            // Update task with final status
+            var events = ((InMemoryEventQueue)eventQueue).GetEvents();
+            var finalUpdate = events.OfType<TaskStatusUpdate>().LastOrDefault(e => e.Final);
+            if (finalUpdate != null)
             {
-                Kind = "task",
-                Id = taskId,
-                ContextId = contextId,
-                Status = new TaskStatus
-                {
-                    State = "submitted",
-                    Timestamp = DateTime.UtcNow
-                },
-                History = new List<Message> { message }
-            };
-
-            _a2aTasks[taskId] = a2aTask;
-
-            // Update context history
-            if (!_contexts.ContainsKey(contextId))
-            {
-                _contexts[contextId] = new List<Message>();
-            }
-            _contexts[contextId].Add(message);
-
-            // Execute asynchronously
-            _ = System.Threading.Tasks.Task.Run(async () =>
-            {
-                await _executor.ExecuteAsync(requestContext, eventQueue);
-
-                // Update task with final status
-                var events = ((InMemoryEventQueue)eventQueue).GetEvents();
-                var finalUpdate = events.OfType<TaskStatusUpdate>().LastOrDefault(e => e.Final);
-                if (finalUpdate != null)
+                lock (_stateLock)
                 {
                     a2aTask.Status = finalUpdate.Status;
                     if (finalUpdate.Status.Message != null)
                     {
                         a2aTask.History.Add(finalUpdate.Status.Message);
-                        _contexts[contextId].Add(finalUpdate.Status.Message);
+                        contextMessages.Add(finalUpdate.Status.Message);
                     }
                 }
-            });
+            }
+        });
 
-            return Results.Json(a2aTask);
+        return await System.Threading.Tasks.Task.FromResult(a2aTask);
+    }
+
+    public async System.Threading.Tasks.Task<IResult> HandleMessageSend(Message message)
+    {
+        try
+        {
+            var task = await ExecuteMessageSendAsync(message);
+            return Results.Json(task);
         }
         catch (Exception ex)
         {
@@ -145,14 +156,28 @@ public class RestTransportHandler
             await eventQueue.EnqueueAsync(a2aTask);
 
             // Update context history
-            if (!_contexts.ContainsKey(contextId))
+            var contextMessages = _contexts.GetOrAdd(contextId, _ => new List<Message>());
+            lock (_stateLock)
             {
-                _contexts[contextId] = new List<Message>();
+                contextMessages.Add(message);
             }
-            _contexts[contextId].Add(message);
 
             // Execute and stream events
             await _executor.ExecuteAsync(requestContext, eventQueue);
+
+            var finalUpdate = eventQueue.GetStatusUpdates().LastOrDefault(e => e.Final);
+            if (finalUpdate != null)
+            {
+                lock (_stateLock)
+                {
+                    a2aTask.Status = finalUpdate.Status;
+                    if (finalUpdate.Status.Message != null)
+                    {
+                        a2aTask.History.Add(finalUpdate.Status.Message);
+                        contextMessages.Add(finalUpdate.Status.Message);
+                    }
+                }
+            }
 
             await context.Response.CompleteAsync();
         }
@@ -207,6 +232,8 @@ public class RestTransportHandler
 public class StreamingEventQueue : IEventQueue
 {
     private readonly HttpResponse _response;
+    private readonly List<TaskStatusUpdate> _statusUpdates = new();
+    private readonly object _statusLock = new();
 
     public StreamingEventQueue(HttpResponse response)
     {
@@ -215,6 +242,11 @@ public class StreamingEventQueue : IEventQueue
 
     public async System.Threading.Tasks.Task EnqueueAsync(TaskStatusUpdate statusUpdate)
     {
+        lock (_statusLock)
+        {
+            _statusUpdates.Add(statusUpdate);
+        }
+
         var json = JsonSerializer.Serialize(statusUpdate, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -222,6 +254,14 @@ public class StreamingEventQueue : IEventQueue
 
         await _response.WriteAsync($"data: {json}\n\n");
         await _response.Body.FlushAsync();
+    }
+
+    public IReadOnlyList<TaskStatusUpdate> GetStatusUpdates()
+    {
+        lock (_statusLock)
+        {
+            return _statusUpdates.ToList();
+        }
     }
 
     public async System.Threading.Tasks.Task EnqueueAsync(A2ATask task)

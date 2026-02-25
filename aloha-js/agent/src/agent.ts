@@ -1,5 +1,5 @@
 /**
- * Dice Agent with multi-transport support (JSON-RPC, gRPC, REST).
+ * Dice Agent with REST transport support.
  */
 
 import express from 'express';
@@ -24,7 +24,7 @@ import { A2AExpressApp } from '@a2a-js/sdk/server/express';
 import { DiceAgentExecutor } from './executor.js';
 
 /**
- * Dice Agent implementing A2A protocol with multi-transport support.
+ * Dice Agent implementing A2A protocol with REST transport support.
  */
 export class DiceAgent {
     private grpcPort: number;
@@ -65,7 +65,7 @@ export class DiceAgent {
      */
     private _createAgentCard(): AgentCard {
         return {
-            protocolVersion: '1.0',
+            protocolVersion: '0.3.0',
             name: process.env.AGENT_NAME || 'Dice Agent',
             description: process.env.AGENT_DESCRIPTION || 'An agent that can roll arbitrary dice and check prime numbers',
             url: `http://localhost:${this.restPort}`,
@@ -109,7 +109,7 @@ export class DiceAgent {
      * Start the agent server with multi-transport support.
      */
     async start(): Promise<void> {
-        console.log('Starting Dice Agent with multi-transport support');
+        console.log('Starting Dice Agent with REST transport support');
 
         // Create the A2A executor wrapper
         const a2aExecutor = new DiceA2AExecutor(this.executor, this.contexts);
@@ -127,16 +127,32 @@ export class DiceAgent {
         const appBuilder = new A2AExpressApp(requestHandler);
         const expressApp = appBuilder.setupRoutes(express());
 
+        expressApp.get('/v1/transports', (_req, res) => {
+            res.json({
+                rest: {
+                    implemented: true,
+                    stream: true,
+                },
+                jsonrpc: {
+                    enabled: false,
+                    implemented: false,
+                    stream: false,
+                },
+                grpc: {
+                    enabled: false,
+                    implemented: false,
+                    stream: false,
+                },
+                experimentalTransports: false,
+            });
+        });
+
         // Start REST server
         expressApp.listen(this.restPort, () => {
             console.log('='.repeat(60));
-            console.log('Dice Agent is running with the following transports:');
+            console.log('Dice Agent is running with the following transport:');
             console.log(`  - REST:         http://${this.host}:${this.restPort}`);
             console.log(`  - Agent Card:   http://${this.host}:${this.restPort}/.well-known/agent-card.json`);
-            console.log('');
-            console.log('Note: JSON-RPC and gRPC transports require additional SDK support');
-            console.log(`  - JSON-RPC would be on port: ${this.jsonrpcPort}`);
-            console.log(`  - gRPC would be on port: ${this.grpcPort}`);
             console.log('='.repeat(60));
         });
     }

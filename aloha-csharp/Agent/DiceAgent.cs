@@ -24,15 +24,13 @@ public class DiceAgent
             ?? "An agent that can roll arbitrary dice and check prime numbers";
         var agentVersion = _configuration["Agent:Version"] ?? "1.0.0";
         
-        var jsonRpcPort = _configuration.GetValue<int>("Ports:JsonRpc", 11000);
-        var grpcPort = _configuration.GetValue<int>("Ports:Grpc", 11001);
         var restPort = _configuration.GetValue<int>("Ports:Rest", 11002);
 
         return new AgentCard
         {
             Name = agentName,
             Description = agentDescription,
-            Url = $"localhost:{jsonRpcPort}",
+            Url = $"http://localhost:{restPort}",
             Version = agentVersion,
             Capabilities = new AgentCapabilities
             {
@@ -64,21 +62,9 @@ public class DiceAgent
                     }
                 }
             },
-            PreferredTransport = "grpc",
+            PreferredTransport = "rest",
             Transports = new List<TransportInfo>
             {
-                new TransportInfo
-                {
-                    Type = "jsonrpc",
-                    Url = $"ws://localhost:{jsonRpcPort}",
-                    Port = jsonRpcPort
-                },
-                new TransportInfo
-                {
-                    Type = "grpc",
-                    Url = $"localhost:{grpcPort}",
-                    Port = grpcPort
-                },
                 new TransportInfo
                 {
                     Type = "rest",

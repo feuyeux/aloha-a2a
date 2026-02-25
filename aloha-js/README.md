@@ -1,13 +1,14 @@
 # Aloha A2A - JavaScript/TypeScript Implementation
 
-This directory contains the JavaScript/TypeScript implementation of the Aloha A2A (Agent-to-Agent) communication framework with multi-transport support.
+This directory contains the JavaScript/TypeScript implementation of the Aloha A2A (Agent-to-Agent) communication framework with REST transport support.
 
 ## Overview
 
 The implementation provides:
+
 - **Agent**: A dice rolling agent that can roll arbitrary N-sided dice and check if numbers are prime
-- **Host**: A client that can communicate with agents using various transport protocols
-- **Multi-Transport Support**: REST (primary), with JSON-RPC and gRPC support planned
+- **Host**: A client that communicates with agents via REST transport
+- **Transport Support**: REST (implemented), with JSON-RPC and gRPC planned
 
 ## Prerequisites
 
@@ -23,14 +24,14 @@ aloha-js/
 │   ├── src/
 │   │   ├── tools.ts      # Dice rolling and prime checking tools
 │   │   ├── executor.ts   # Agent executor with LLM integration (Genkit)
-│   │   ├── agent.ts      # Main agent with multi-transport support
+│   │   ├── agent.ts      # Main agent with REST transport support
 │   │   └── index.ts      # Entry point
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── .env.example
 ├── host/                  # Host (client) implementation
 │   ├── src/
-│   │   ├── client.ts     # A2A client with multi-transport support
+│   │   ├── client.ts     # A2A client with REST transport support
 │   │   └── index.ts      # CLI entry point
 │   ├── package.json
 │   └── tsconfig.json
@@ -172,10 +173,11 @@ node dist/index.js --transport rest --host localhost --port 14002 --message "Rol
 
 ```
 Options:
-  -t, --transport <type>  Transport protocol to use (jsonrpc, grpc, rest) (default: "rest")
+  -t, --transport <type>  Transport protocol to use (rest) (default: "rest")
   -h, --host <hostname>   Agent hostname (default: "localhost")
-  -p, --port <port>       Agent port (default: 14000 for gRPC, 14001 for JSON-RPC, 14002 for REST)
+  -p, --port <port>       Agent port (default: 14002 for REST)
   -m, --message <text>    Message to send
+  --probe                 Probe transport capabilities and exit
   -c, --context <id>      Context ID for conversation continuity
 ```
 
@@ -223,6 +225,14 @@ The primary transport protocol currently supported by the @a2a-js/sdk.
   - `GET /v1/tasks/{id}` - Get task status
   - `POST /v1/tasks/{id}:cancel` - Cancel a task
   - `GET /v1/card` - Get agent card
+  - `GET /v1/transports` - Get transport capability matrix
+
+### Transport Capability Probe
+
+```bash
+curl http://localhost:14002/v1/transports
+node dist/index.js --transport rest --port 14002 --probe
+```
 
 ### JSON-RPC 2.0
 
@@ -247,6 +257,7 @@ The Dice Agent provides two main tools:
 Rolls an N-sided dice and returns a random number between 1 and N.
 
 **Examples:**
+
 - "Roll a 6-sided dice"
 - "Roll a 20-sided dice"
 - "Roll a d12"
@@ -256,6 +267,7 @@ Rolls an N-sided dice and returns a random number between 1 and N.
 Checks if the given numbers are prime.
 
 **Examples:**
+
 - "Is 17 prime?"
 - "Check if 2, 4, 7, 9, 11 are prime"
 - "Are these numbers prime: 13, 15, 19"
@@ -265,6 +277,7 @@ Checks if the given numbers are prime.
 The agent can perform multiple operations in sequence:
 
 **Example:**
+
 - "Roll a 12-sided dice and check if the result is prime"
 
 ## LLM Integration

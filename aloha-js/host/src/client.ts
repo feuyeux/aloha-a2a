@@ -1,5 +1,5 @@
 /**
- * A2A Host client with multi-transport support.
+ * A2A Host client with REST transport support.
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -16,8 +16,7 @@ import {
 import { A2AClient } from '@a2a-js/sdk/client';
 
 /**
- * A2A Host client with multi-transport support.
- * Currently supports REST transport via the @a2a-js/sdk.
+ * A2A Host client with REST transport support.
  */
 export class Client {
     private serverUrl: string;
@@ -197,6 +196,17 @@ export class Client {
      */
     getAgentCard(): AgentCard | null {
         return this.agentCard;
+    }
+
+    /**
+     * Probe transport capability matrix from the agent.
+     */
+    async probeTransports(): Promise<any> {
+        const response = await fetch(`${this.serverUrl}/v1/transports`);
+        if (!response.ok) {
+            throw new Error(`Failed to probe transports: ${response.status}`);
+        }
+        return response.json();
     }
 
     /**

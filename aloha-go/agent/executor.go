@@ -378,7 +378,7 @@ func (e *DiceAgentExecutor) Execute(ctx context.Context, request *protocol.Messa
 
 	// Process the message
 	log.Printf("Processing message with tools")
-	response, err := e.processMessage(messageText)
+	response, err := e.processMessage(ctx, messageText)
 	if err != nil {
 		log.Printf("Error processing message: %v", err)
 		e.sendFailedStatus(ctx, taskID, request.ContextID, fmt.Sprintf("Error processing your request: %s", err.Error()), eventChan)
@@ -509,11 +509,10 @@ func (e *DiceAgentExecutor) Cancel(ctx context.Context, taskID string, contextID
 }
 
 // processMessage processes the user message and generates a response
-func (e *DiceAgentExecutor) processMessage(messageText string) (string, error) {
+func (e *DiceAgentExecutor) processMessage(ctx context.Context, messageText string) (string, error) {
 	// Try to use LLM if available
 	if e.useLLM && e.ollamaClient != nil {
 		log.Printf("Processing message with Ollama LLM")
-		ctx := context.Background()
 		response, err := e.processWithLLM(ctx, messageText)
 		if err != nil {
 			log.Printf("LLM processing failed: %v, falling back to pattern matching", err)

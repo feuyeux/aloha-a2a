@@ -30,9 +30,41 @@ aloha-csharp/
 └── README.md           # This file
 ```
 
+## Architecture
+
+### Agent
+
+```
+Program.cs (Entry Point)
+    ↓
+RestTransportHandler (HTTP Endpoints)
+    ↓
+DiceAgentExecutor (Business Logic)
+    ↓
+Semantic Kernel + Tools (LLM + Functions)
+```
+
+### Host
+
+```
+Program.cs (CLI)
+    ↓
+RestClient / JsonRpcClient
+    ↓
+Agent REST / JSON-RPC API
+```
+
+### Key Design Decisions
+
+1. **No External A2A SDK** — A2A protocol models and transport handlers are implemented directly (no NuGet SDK available).
+2. **REST-First** — REST transport is the default stable path; JSON-RPC is behind `A2A_EXPERIMENTAL_TRANSPORTS=1`.
+3. **Semantic Kernel** — LLM integration uses Microsoft Semantic Kernel with automatic tool calling.
+4. **Shared Task Execution** — `RestTransportHandler.ExecuteMessageSendAsync` is shared by both REST and JSON-RPC paths.
+
 ## Dependencies
 
 ### Agent
+
 - Microsoft.SemanticKernel v1.72.0 - LLM integration
 - Grpc.AspNetCore v2.76.0 - gRPC support (future)
 - Grpc.AspNetCore.Server v2.76.0 - gRPC server support (future)
@@ -40,12 +72,14 @@ aloha-csharp/
 - System.Text.Json v10.0.3 - JSON serialization
 
 ### Host
+
 - Grpc.Net.Client v2.76.0 - gRPC client (future)
 - System.CommandLine v2.0.3 - CLI interface
 - System.Text.Json v10.0.3 - JSON serialization
 
 ### Official SDK Reference
-- A2A .NET SDK: https://github.com/a2aproject/a2a-dotnet (recommend pinning to latest stable tag when integrating)
+
+- A2A .NET SDK: <https://github.com/a2aproject/a2a-dotnet> (recommend pinning to latest stable tag when integrating)
 
 ## Setup
 
@@ -86,6 +120,7 @@ ollama serve
 ```
 
 Verify Ollama is running:
+
 ```bash
 curl http://localhost:11434/api/tags
 ```
@@ -100,12 +135,14 @@ dotnet restore
 ### 6. Configure Environment Variables (Optional)
 
 Copy the example environment file:
+
 ```bash
 cd Agent
 cp .env.example .env
 ```
 
 Edit `.env` to customize Ollama settings if needed:
+
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5
@@ -113,7 +150,7 @@ OLLAMA_MODEL=qwen2.5
 
 ## Running the Agent
 
-The agent currently supports REST transport:
+The agent currently supports REST transport. In experimental mode, it also exposes a JSON-RPC `message/send` POC endpoint:
 
 ```bash
 cd Agent
@@ -121,10 +158,12 @@ dotnet run
 ```
 
 The agent will be available on:
+
 - REST: `http://localhost:15002`
 - Agent Card: `http://localhost:15002/.well-known/agent-card.json`
+- JSON-RPC (experimental `message/send` only): `http://localhost:15002/jsonrpc`
 
-Note: JSON-RPC 2.0 and gRPC transports are planned for future implementation.
+Note: JSON-RPC stream and gRPC transports are still not implemented end-to-end.
 
 ## Running the Host
 
@@ -157,9 +196,41 @@ dotnet run -- --context "my-context-123" --message "Roll a dice"
 
 ```bash
 dotnet run -- --transport rest --host localhost --port 15002 --message "Roll a 12-sided dice and check if it's prime" --stream
+
+# Probe transport capabilities
+dotnet run -- --transport rest --host localhost --port 15002 --probe
 ```
 
-Note: JSON-RPC and gRPC transports are not yet implemented. Use `--transport rest` (default).
+Note: JSON-RPC/gRPC transports are gated behind experimental mode. JSON-RPC currently supports only `message/send` happy path for POC.
+
+To enable SDK POC mode for non-REST experiments:
+
+```bash
+set A2A_EXPERIMENTAL_TRANSPORTS=1
+```
+
+Without this flag, host will reject `--transport grpc|jsonrpc` and agent will run REST-only.
+
+Experimental JSON-RPC send example:
+
+```bash
+set A2A_EXPERIMENTAL_TRANSPORTS=1
+cd Host
+dotnet run -- --transport jsonrpc --host localhost --port 15002 --message "Is 17 prime?"
+
+```
+
+Transport capability probe:
+
+```bash
+curl http://localhost:15002/v1/transports
+```
+
+JSON-RPC send POC validation script:
+
+```powershell
+.\poc-jsonrpc-send.ps1
+```
 
 ## Configuration
 
@@ -184,10 +255,12 @@ Edit `Agent/appsettings.json`:
 ### Host Configuration
 
 Command-line arguments:
-- `--transport <jsonrpc|grpc|rest>`: Transport protocol to use
+
+- `--transport <jsonrpc|grpc|rest>`: Transport protocol to use (non-REST requires `A2A_EXPERIMENTAL_TRANSPORTS=1`)
 - `--host <hostname>`: Agent hostname (default: localhost)
 - `--port <port>`: Agent port
 - `--message <text>`: Message to send to the agent
+- `--probe`: Query `GET /v1/transports` and print capability matrix
 
 ## LLM Integration
 
@@ -214,14 +287,17 @@ export OLLAMA_MODEL=qwen2.5:14b
 ### Configuration
 
 The agent reads Ollama configuration from:
+
 1. Environment variables (highest priority)
 2. `appsettings.json` configuration file
 
 **Environment Variables:**
+
 - `OLLAMA_BASE_URL`: Ollama server URL (default: `http://localhost:11434`)
 - `OLLAMA_MODEL`: Model name (default: `qwen2.5`)
 
 **appsettings.json:**
+
 ```json
 {
   "Ollama": {
@@ -238,7 +314,7 @@ The agent reads Ollama configuration from:
 
 1. **roll_dice(N)**: Rolls an N-sided dice
    - Example: "Roll a 20-sided dice"
-   
+
 2. **check_prime(nums)**: Checks if numbers are prime
    - Example: "Check if 2, 4, 7, 9, 11 are prime"
 
@@ -296,21 +372,25 @@ dotnet run -- --port 13002 --message "Roll a dice"
 **Error: "Failed to connect to Ollama"**
 
 1. Check if Ollama is running:
+
    ```bash
    curl http://localhost:11434/api/tags
    ```
 
 2. Start Ollama if not running:
+
    ```bash
    ollama serve
    ```
 
 3. Verify the model is installed:
+
    ```bash
    ollama list
    ```
 
 4. Pull the model if missing:
+
    ```bash
    ollama pull qwen2.5
    ```
@@ -318,11 +398,13 @@ dotnet run -- --port 13002 --message "Roll a dice"
 **Error: "Model not found"**
 
 Pull the required model:
+
 ```bash
 ollama pull qwen2.5
 ```
 
 List available models:
+
 ```bash
 ollama list
 ```
@@ -330,6 +412,7 @@ ollama list
 **Ollama running on different host/port**
 
 Set the `OLLAMA_BASE_URL` environment variable:
+
 ```bash
 export OLLAMA_BASE_URL=http://your-host:11434
 dotnet run
@@ -342,6 +425,7 @@ If ports are already in use, modify the ports in `appsettings.json`.
 ### Build Errors
 
 Clean and rebuild:
+
 ```bash
 dotnet clean
 dotnet restore
@@ -351,6 +435,7 @@ dotnet build
 ### NuGet Package Restore Issues
 
 Clear NuGet cache:
+
 ```bash
 dotnet nuget locals all --clear
 dotnet restore
@@ -359,6 +444,7 @@ dotnet restore
 ### Poor Response Quality
 
 Try a larger model variant:
+
 ```bash
 ollama pull qwen2.5:14b
 export OLLAMA_MODEL=qwen2.5:14b
@@ -366,6 +452,7 @@ dotnet run
 ```
 
 Adjust temperature in `appsettings.json`:
+
 ```json
 {
   "Ollama": {

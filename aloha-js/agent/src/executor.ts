@@ -240,11 +240,16 @@ export class DiceAgentExecutor {
      */
     private async _executeToolCall(toolCall: any): Promise<any> {
         const functionName = toolCall.function.name;
-        const args = toolCall.function.arguments;
-
-        console.log(`Executing tool: ${functionName} with args:`, args);
-
         try {
+            const rawArgs = toolCall.function.arguments;
+            const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : (rawArgs ?? {});
+
+            if (typeof args !== 'object' || Array.isArray(args)) {
+                throw new Error('Invalid tool arguments: expected an object');
+            }
+
+            console.log(`Executing tool: ${functionName} with args:`, args);
+
             switch (functionName) {
                 case 'rollDice': {
                     const sides = args.sides;

@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const experimentalTransportsEnv = "A2A_EXPERIMENTAL_TRANSPORTS"
+
 func main() {
 	// Parse command-line flags
 	transport := flag.String("transport", "rest", "Transport protocol to use (jsonrpc, grpc, rest)")
@@ -16,11 +18,12 @@ func main() {
 	port := flag.Int("port", 0, "Agent port (default: 11000 for JSON-RPC, 11001 for gRPC, 11002 for REST)")
 	message := flag.String("message", "", "Message to send to the agent")
 	stream := flag.Bool("stream", false, "Enable streaming response")
-	
+	probe := flag.Bool("probe", false, "Probe transport capabilities and exit")
+
 	flag.Parse()
-	
+
 	// Validate message
-	if *message == "" {
+	if *message == "" && !*probe {
 		fmt.Println("Usage: host --transport <jsonrpc|grpc|rest> --host <hostname> --port <port> --message <text> [--stream]")
 		fmt.Println("\nOptions:")
 		fmt.Println("  --transport  Transport protocol (jsonrpc, grpc, rest) [default: rest]")
@@ -28,6 +31,7 @@ func main() {
 		fmt.Println("  --port       Agent port [default: 12000 for gRPC, 12001 for JSON-RPC, 12002 for REST]")
 		fmt.Println("  --message    Message to send to the agent [required]")
 		fmt.Println("  --stream     Enable streaming response [default: false]")
+		fmt.Println("  --probe      Probe transport capabilities and exit [default: false]")
 		fmt.Println("\nExamples:")
 		fmt.Println("  # Send message using REST (default)")
 		fmt.Println("  host --message \"Roll a 20-sided dice\"")
@@ -39,7 +43,7 @@ func main() {
 		fmt.Println("  host --transport grpc --port 12000 --message \"Check if 2, 7, 11 are prime\" --stream")
 		os.Exit(1)
 	}
-	
+
 	// Set default port based on transport if not specified
 	if *port == 0 {
 		switch *transport {
@@ -53,39 +57,62 @@ func main() {
 			log.Fatalf("Unsupported transport: %s", *transport)
 		}
 	}
-	
+
+	experimentalTransportsEnabled := os.Getenv(experimentalTransportsEnv) == "1"
+	if *transport != "rest" && !experimentalTransportsEnabled {
+		log.Fatalf("transport '%s' requires experimental mode. Set %s=1 to enable JSON-RPC/gRPC POC, or use --transport rest", *transport, experimentalTransportsEnv)
+	}
+
 	// Construct server URL
 	serverURL := fmt.Sprintf("http://%s:%d", *host, *port)
-	
+
 	log.Println("============================================================")
 	log.Println("A2A Host Client")
 	log.Printf("  Server: %s", serverURL)
 	log.Printf("  Transport: %s", *transport)
 	log.Printf("  Streaming: %v", *stream)
-	log.Printf("  Message: %s", *message)
+	if *probe {
+		log.Printf("  Probe: true")
+	} else {
+		log.Printf("  Message: %s", *message)
+	}
 	log.Println("============================================================")
-	
+
 	// Create client
 	client := NewClient(serverURL, *transport)
-	
+
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	
+
 	// Initialize client
 	if err := client.Initialize(ctx); err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
-	
+
+	if *probe {
+		capabilities, err := client.ProbeTransports(ctx)
+		if err != nil {
+			log.Fatalf("Failed to probe transport capabilities: %v", err)
+		}
+
+		fmt.Println("\n============================================================")
+		fmt.Println("Transport Capabilities")
+		fmt.Println("============================================================")
+		fmt.Println(capabilities)
+		fmt.Println("============================================================")
+		goto cleanup
+	}
+
 	// Send message
 	if *stream {
 		// Streaming mode
 		responseChan, errorChan := client.SendMessageStream(ctx, *message)
-		
+
 		fmt.Println("\n============================================================")
 		fmt.Println("Agent Response (Streaming):")
 		fmt.Println("============================================================")
-		
+
 		for {
 			select {
 			case response, ok := <-responseChan:
@@ -109,7 +136,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to send message: %v", err)
 		}
-		
+
 		// Display response
 		fmt.Println("\n============================================================")
 		fmt.Println("Agent Response:")
@@ -117,7 +144,7 @@ func main() {
 		fmt.Println(response)
 		fmt.Println("============================================================")
 	}
-	
+
 cleanup:
 	// Clean up
 	if err := client.Close(); err != nil {

@@ -2,6 +2,8 @@
 
 import logging
 import os
+import asyncio
+import json
 from typing import Any, Dict
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -116,17 +118,18 @@ class DiceAgentExecutor(AgentExecutor):
     
     def _setup_llm(self):
         """Setup LLM with tool definitions."""
+        self.client = None
+        self.base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+        self.model = os.getenv('OLLAMA_MODEL', 'qwen2.5')
+        llm_required = os.getenv('OLLAMA_REQUIRED', 'false').lower() in ('1', 'true', 'yes')
+
         try:
             # Import Ollama for LLM integration
             import ollama
-            
-            # Read configuration from environment
-            self.base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
-            self.model = os.getenv('OLLAMA_MODEL', 'qwen2.5')
-            
+
             # Initialize Ollama client
             self.client = ollama.Client(host=self.base_url)
-            
+
             # Validate connection on startup
             try:
                 # Try to list models to verify connection
@@ -134,13 +137,18 @@ class DiceAgentExecutor(AgentExecutor):
                 logger.info(f"Successfully connected to Ollama at {self.base_url}")
                 logger.info(f"Using model: {self.model}")
             except Exception as e:
-                logger.error(f"Failed to connect to Ollama at {self.base_url}")
-                logger.error(f"Please ensure Ollama is installed and running:")
-                logger.error(f"1. Install Ollama: https://ollama.ai/download")
-                logger.error(f"2. Pull {self.model} model: ollama pull {self.model}")
-                logger.error(f"3. Start Ollama service: ollama serve")
-                logger.error(f"Error details: {e}")
-                raise ConnectionError(f"Cannot connect to Ollama at {self.base_url}: {e}")
+                if llm_required:
+                    logger.error(f"Failed to connect to Ollama at {self.base_url}")
+                    logger.error(f"Please ensure Ollama is installed and running:")
+                    logger.error(f"1. Install Ollama: https://ollama.ai/download")
+                    logger.error(f"2. Pull {self.model} model: ollama pull {self.model}")
+                    logger.error(f"3. Start Ollama service: ollama serve")
+                    logger.error(f"Error details: {e}")
+                    raise ConnectionError(f"Cannot connect to Ollama at {self.base_url}: {e}")
+
+                logger.warning("Ollama unavailable, running in fallback mode")
+                logger.warning(f"Connection error details: {e}")
+                self.client = None
             
             # Define tool schemas for LLM
             self.tool_schemas = [
@@ -184,15 +192,23 @@ class DiceAgentExecutor(AgentExecutor):
             logger.info("LLM setup complete with Ollama qwen2.5")
             
         except ImportError as e:
-            logger.error(f"Ollama package not available: {e}")
-            logger.error("Please install ollama: pip install ollama")
-            raise
+            if llm_required:
+                logger.error(f"Ollama package not available: {e}")
+                logger.error("Please install ollama: pip install ollama")
+                raise
+
+            logger.warning(f"Ollama package not available, fallback mode enabled: {e}")
+            self.client = None
         except ConnectionError:
             # Re-raise connection errors
             raise
         except Exception as e:
-            logger.error(f"Unexpected error during LLM setup: {e}")
-            raise
+            if llm_required:
+                logger.error(f"Unexpected error during LLM setup: {e}")
+                raise
+
+            logger.warning(f"Unexpected LLM setup error, fallback mode enabled: {e}")
+            self.client = None
     
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """
@@ -453,10 +469,11 @@ Be conversational and friendly in your responses.
             
             try:
                 # Call Ollama chat API with tools
-                response = self.client.chat(
+                response = await asyncio.to_thread(
+                    self.client.chat,
                     model=self.model,
                     messages=messages,
-                    tools=self.tool_schemas
+                    tools=self.tool_schemas,
                 )
                 
                 message = response.get('message', {})
@@ -472,6 +489,12 @@ Be conversational and friendly in your responses.
                         function = tool_call.get('function', {})
                         tool_name = function.get('name')
                         tool_args = function.get('arguments', {})
+                        if isinstance(tool_args, str):
+                            tool_args = json.loads(tool_args)
+                        if tool_args is None:
+                            tool_args = {}
+                        if not isinstance(tool_args, dict):
+                            raise ValueError(f"Tool arguments for {tool_name} must be an object")
                         
                         logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
                         
