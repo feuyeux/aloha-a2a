@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD060 -->
+
 # Aloha A2A - Java Implementation
 
 A Java implementation of the A2A (Agent-to-Agent) protocol with support for three transport modes: gRPC, JSON-RPC, and REST (HTTP+JSON).
@@ -33,6 +35,8 @@ mvn clean install
 ```bash
 cd agent
 mvn quarkus:dev -Dquarkus.profile=grpc
+# Powershell
+mvn quarkus:dev "-Dquarkus.profile=grpc"
 ```
 
 **Endpoints**:
@@ -44,7 +48,9 @@ mvn quarkus:dev -Dquarkus.profile=grpc
 
 ```bash
 cd host
-mvn exec:java -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
+mvn exec:exec -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
+# Powershell
+cmd /c "mvn exec:exec -Dexec.args=""--transport grpc --port 11000 --message 'Roll a 20-sided dice'"""
 ```
 
 ### JSON-RPC Transport
@@ -54,6 +60,8 @@ mvn exec:java -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-si
 ```bash
 cd agent
 mvn quarkus:dev -Dquarkus.profile=jsonrpc
+# Powershell
+mvn quarkus:dev "-Dquarkus.profile=jsonrpc"
 ```
 
 **Endpoints**:
@@ -65,7 +73,9 @@ mvn quarkus:dev -Dquarkus.profile=jsonrpc
 
 ```bash
 cd host
-mvn exec:java -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
+mvn exec:exec -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
+# Powershell
+cmd /c "mvn exec:exec -Dexec.args=""--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"""
 ```
 
 ## REST Transport
@@ -75,6 +85,8 @@ mvn exec:java -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 
 ```bash
 cd agent
 mvn quarkus:dev -Dquarkus.profile=rest
+# Powershell
+mvn quarkus:dev "-Dquarkus.profile=rest"
 ```
 
 **Endpoints**:
@@ -86,7 +98,9 @@ mvn quarkus:dev -Dquarkus.profile=rest
 
 ```bash
 cd host
-mvn exec:java -Dexec.args="--transport rest --port 11002 --message 'Check if 13 is prime'"
+mvn exec:exec -Dexec.args="--transport rest --port 11002 --message 'Check if 13 is prime'"
+# Powershell
+cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11002 --message 'Check if 13 is prime'"""
 ```
 
 ## Agent Tools

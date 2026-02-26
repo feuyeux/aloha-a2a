@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -13,6 +12,19 @@
     <artifactId>aloha-java-host</artifactId>
     <name>Aloha A2A Java - Host</name>
     <description>Java A2A host with multi-transport support</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Enforce consistent gRPC versions -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- A2A SDK Client -->
@@ -35,20 +47,20 @@
             <artifactId>a2a-java-sdk-client-transport-rest</artifactId>
             <version>${a2a.sdk.version}</version>
         </dependency>
-        
+
         <!-- gRPC -->
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty-shaded</artifactId>
             <version>${grpc.version}</version>
         </dependency>
-        
+
         <!-- Jackson for JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
-        
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -68,7 +80,8 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
                 <configuration>
-                    <mainClass>com.aloha.a2a.host.Main</mainClass>
+                    <executable>java</executable>
+                    <commandlineArgs>-classpath %classpath com.aloha.a2a.host.Main ${exec.args}</commandlineArgs>
                 </configuration>
             </plugin>
         </plugins>

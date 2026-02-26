@@ -53,6 +53,7 @@
             </dependency>
             
             <!-- A2A SDK -->
+            <!-- https://mvnrepository.com/artifact/io.github.a2asdk/a2a-java-sdk-spec-grpc -->
             <dependency>
                 <groupId>io.github.a2asdk</groupId>
                 <artifactId>a2a-java-sdk-reference-grpc</artifactId>
