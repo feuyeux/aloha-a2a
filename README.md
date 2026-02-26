@@ -1,6 +1,4 @@
-﻿# Aloha A2A Multi-Language Implementation
-
-This project provides complete **Agent-to-Agent (A2A)** protocol implementations in five programming languages: **Java**, **Python**, **JavaScript/TypeScript**, **C#**, and **Go**.
+﻿# Hello Agent2Agent (A2A) Protocol
 
 The [A2A protocol](https://a2a-protocol.org) standardizes communication between AI agents, enabling seamless interaction regardless of the underlying technology stack.
 

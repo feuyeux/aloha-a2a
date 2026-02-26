@@ -18,7 +18,7 @@ Desktop.ini
 # IDE and Editor Files
 # ============================================================
 # VSCode
-.vscode/
+
 *.code-workspace
 
 # IntelliJ IDEA
