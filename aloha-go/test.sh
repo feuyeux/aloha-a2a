@@ -50,22 +50,22 @@ resolve_python() {
 }
 
 # Check if binaries exist (or can be built)
-if ! AGENT_BIN="$(resolve_binary "agent/agent")"; then
+if ! AGENT_BIN="$(resolve_binary "server/server")"; then
     if command -v go >/dev/null 2>&1; then
-        echo -e "${YELLOW}Building agent...${NC}"
-        (cd agent && go build -o agent)
-        AGENT_BIN="$(resolve_binary "agent/agent")"
+        echo -e "${YELLOW}Building server...${NC}"
+        (cd server && go build -o server)
+        AGENT_BIN="$(resolve_binary "server/server")"
     else
         echo -e "${RED}✗ Agent binary not found and 'go' command is unavailable${NC}"
         exit 1
     fi
 fi
 
-if ! HOST_BIN="$(resolve_binary "host/host")"; then
+if ! HOST_BIN="$(resolve_binary "client/client")"; then
     if command -v go >/dev/null 2>&1; then
-        echo -e "${YELLOW}Building host...${NC}"
-        (cd host && go build -o host)
-        HOST_BIN="$(resolve_binary "host/host")"
+        echo -e "${YELLOW}Building client...${NC}"
+        (cd client && go build -o client)
+        HOST_BIN="$(resolve_binary "client/client")"
     else
         echo -e "${RED}✗ Host binary not found and 'go' command is unavailable${NC}"
         exit 1

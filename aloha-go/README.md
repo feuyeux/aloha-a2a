@@ -1,6 +1,6 @@
 # Aloha A2A - Go Implementation
 
-Go implementation of the A2A protocol with agent and host components supporting JSON-RPC 2.0, gRPC, and REST transports.
+Go implementation of the A2A protocol with server and client components supporting JSON-RPC 2.0, gRPC, and REST transports.
 
 ## Requirements
 
@@ -14,12 +14,12 @@ aloha-go/
 ├── pkg/
 │   └── protocol/       # A2A protocol types and utilities
 │       └── types.go
-├── agent/              # Agent (server) implementation
+├── server/             # Server implementation
 │   ├── agent.go        # Multi-transport server
 │   ├── executor.go     # Business logic executor
 │   ├── tools.go        # Dice and prime tools
 │   └── README.md
-├── host/               # Host (client) implementation
+├── client/             # Client implementation
 │   ├── client.go       # Multi-transport client
 │   ├── main.go         # CLI interface
 │   └── README.md
@@ -64,13 +64,13 @@ go mod download
 ### 3. Build Components
 
 ```bash
-# Build agent
-cd agent
-go build -o agent
+# Build server
+cd server
+go build -o server
 
-# Build host
-cd ../host
-go build -o host
+# Build client
+cd ../client
+go build -o client
 ```
 
 ### 4. (Optional) Setup Environment Variables
@@ -85,70 +85,70 @@ REST_PORT=12002
 HOST=0.0.0.0
 ```
 
-## Running the Agent
+## Running the Server
 
-The agent starts REST transport by default. JSON-RPC/gRPC are behind an experimental gate:
+The server starts REST transport by default. JSON-RPC/gRPC are behind an experimental gate:
 
 ```bash
 export A2A_EXPERIMENTAL_TRANSPORTS=1
 ```
 
-Without this flag, agent/host operate in REST-only mode.
+Without this flag, server/client operate in REST-only mode.
 
-When experimental mode is enabled, agent starts three transport servers:
+When experimental mode is enabled, server starts three transport servers:
 
 ```bash
-cd agent
-./agent
+cd server
+./server
 # or
 go run .
 ```
 
-The agent will be available on:
+The server will be available on:
 
 - gRPC: `localhost:12000`
 - JSON-RPC 2.0: `ws://localhost:12001`
 - REST: `http://localhost:12002`
 - Agent Card: `http://localhost:12002/.well-known/agent-card.json`
 
-## Running the Host
+## Running the Client
 
 ### Basic Usage (REST - Default)
 
 ```bash
-cd host
-./host --message "Roll a 20-sided dice"
+cd client
+./client --message "Roll a 20-sided dice"
 ```
 
 ### JSON-RPC 2.0 Transport
 
 ```bash
 export A2A_EXPERIMENTAL_TRANSPORTS=1
-./host --transport jsonrpc --port 12001 --message "Roll a 6-sided dice"
+./client --transport jsonrpc --port 12001 --message "Roll a 6-sided dice"
 ```
 
 ### gRPC Transport
 
 ```bash
 export A2A_EXPERIMENTAL_TRANSPORTS=1
-./host --transport grpc --port 12000 --message "Is 17 prime?"
+./client --transport grpc --port 12000 --message "Is 17 prime?"
 ```
 
 ### REST Transport (Explicit)
 
 ```bash
-./host --transport rest --port 12002 --message "Check if 2, 7, 11 are prime"
+./client --transport rest --port 12002 --message "Check if 2, 7, 11 are prime"
 ```
 
 ### Streaming Mode
 
 ```bash
-./host --message "Roll a 12-sided dice and check if it's prime" --stream
+./client --message "Roll a 12-sided dice and check if it's prime" --stream
 ```
 
 ## Configuration
 
-### Agent Configuration
+### Server Configuration
 
 Environment variables (optional):
 
@@ -157,7 +157,7 @@ Environment variables (optional):
 - `REST_PORT`: REST port (default: 12002)
 - `HOST`: Bind address (default: 0.0.0.0)
 
-### Host Configuration
+### Client Configuration
 
 Command-line arguments:
 
@@ -171,7 +171,7 @@ Command-line arguments:
 ### Capability Probe
 
 ```bash
-./host --transport rest --port 12002 --probe
+./client --transport rest --port 12002 --probe
 curl http://localhost:12002/v1/transports
 ```
 
@@ -228,16 +228,16 @@ golangci-lint run
 
 ## Cross-Language Testing
 
-The Go agent can communicate with hosts written in any supported language:
+The Go server can communicate with clients written in any supported language:
 
 ```bash
-# Java host -> Go agent
-cd ../aloha-java/host
+# Java client -> Go server
+cd ../aloha-java/client
 mvn compile exec:java -Dexec.args="--transport grpc --port 12000 --message 'Roll a dice'"
 
-# Python host -> Go agent
-cd ../aloha-python/host
-uv run python -m host --transport rest --port 12002 --message "Roll a dice"
+# Python client -> Go server
+cd ../aloha-python/client
+uv run python -m client --transport rest --port 12002 --message "Roll a dice"
 ```
 
 ## Troubleshooting
@@ -247,7 +247,7 @@ uv run python -m host --transport rest --port 12002 --message "Roll a dice"
 If ports are already in use, set different ports via environment variables:
 
 ```bash
-JSONRPC_PORT=12000 GRPC_PORT=12001 REST_PORT=12002 ./agent
+JSONRPC_PORT=12000 GRPC_PORT=12001 REST_PORT=12002 ./server
 ```
 
 Or kill the process using the port:
@@ -276,8 +276,8 @@ go mod download
 
 ## Documentation
 
-- [agent/README.md](./agent/README.md) - Agent documentation
-- [host/README.md](./host/README.md) - Host documentation
+- [server/README.md](./server/README.md) - Server documentation
+- [client/README.md](./client/README.md) - Client documentation
 
 ## References
 

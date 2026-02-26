@@ -2,24 +2,31 @@
 
 # Aloha A2A - Java Implementation
 
-A Java implementation of the A2A (Agent-to-Agent) protocol with support for three transport modes: gRPC, JSON-RPC, and REST (HTTP+JSON).
+A pure Java implementation of the A2A (Agent-to-Agent) protocol with support for three transport modes: gRPC, JSON-RPC, and REST (HTTP+JSON).
 
 ## Features
 
 - **Three Transport Modes**: gRPC, JSON-RPC, and REST (HTTP+JSON)
-- **LLM Integration**: Uses Ollama with qwen2.5 model for natural language understanding
+- **Pure Java + Netty**: No framework (no Quarkus / Spring Boot) — just plain Java 21 with Netty
+- **LLM Integration**: Uses Ollama with qwen2.5 model via Langchain4j
 - **Tool Support**: Roll dice and check prime numbers
 - **A2A SDK**: Uses A2A Java SDK v0.3.3.Final (compatible with A2A Protocol v0.3.x)
 
 ## Port Configuration
 
-| Transport Mode | Port  | Profile    |
-|:--------------|:------|:-----------|
-| gRPC          | 11000 | `grpc`     |
-| JSON-RPC      | 11001 | `jsonrpc`  |
-| REST (HTTP+JSON) | 11002 | `rest`  |
+| Transport Mode    | Server Port | Agent Card URL                                       |
+|:------------------|:------------|:-----------------------------------------------------|
+| gRPC              | 11000       | `http://localhost:11001/.well-known/agent-card.json`  |
+| JSON-RPC          | 11001       | `http://localhost:11001/.well-known/agent-card.json`  |
+| REST (HTTP+JSON)  | 11001       | `http://localhost:11001/.well-known/agent-card.json`  |
 
-**Note**: In gRPC mode, the gRPC service runs on port 11000, while the Agent Card HTTP endpoint is available on port 8080 to avoid port conflicts.
+> In gRPC mode, the gRPC service runs on port 11000 while the Agent Card HTTP endpoint runs on `http.port` (default 11001).
+
+## Prerequisites
+
+- Java 21+
+- Maven 3.9+
+- Ollama running locally (`http://localhost:11434`) with the `qwen2.5` model
 
 ## Build
 
@@ -30,38 +37,35 @@ mvn clean install
 
 ## gRPC Transport
 
-### Agent
+### Server
 
 ```bash
-cd agent
-mvn quarkus:dev -Dquarkus.profile=grpc
-# Powershell
-mvn quarkus:dev "-Dquarkus.profile=grpc"
+cd server && mvn exec:exec -Dtransport.mode=grpc
+# PowerShell
+cd server ; mvn exec:exec "-Dtransport.mode=grpc"
 ```
 
 **Endpoints**:
 
 - gRPC: `localhost:11000`
-- Agent Card: `http://localhost:8080/.well-known/agent-card.json`
+- Agent Card: `http://localhost:11001/.well-known/agent-card.json`
 
-### Host
+### Client
 
 ```bash
-cd host
-mvn exec:exec -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
-# Powershell
-cmd /c "mvn exec:exec -Dexec.args=""--transport grpc --port 11000 --message 'Roll a 20-sided dice'"""
+cd client && mvn exec:exec -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
+# PowerShell
+cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport grpc --port 11000 --message 'Roll a 20-sided dice'"""
 ```
 
-### JSON-RPC Transport
+## JSON-RPC Transport
 
-### Agent
+### Server
 
 ```bash
-cd agent
-mvn quarkus:dev -Dquarkus.profile=jsonrpc
-# Powershell
-mvn quarkus:dev "-Dquarkus.profile=jsonrpc"
+cd server && mvn exec:exec -Dtransport.mode=jsonrpc
+# PowerShell
+cd server ; mvn exec:exec "-Dtransport.mode=jsonrpc"
 ```
 
 **Endpoints**:
@@ -69,39 +73,51 @@ mvn quarkus:dev "-Dquarkus.profile=jsonrpc"
 - JSON-RPC (WebSocket): `ws://localhost:11001`
 - Agent Card: `http://localhost:11001/.well-known/agent-card.json`
 
-### Host
+### Client
 
 ```bash
-cd host
-mvn exec:exec -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
-# Powershell
-cmd /c "mvn exec:exec -Dexec.args=""--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"""
+cd client && mvn exec:exec -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
+# PowerShell
+cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"""
 ```
 
 ## REST Transport
 
-### Agent
+### Server
 
 ```bash
-cd agent
-mvn quarkus:dev -Dquarkus.profile=rest
-# Powershell
-mvn quarkus:dev "-Dquarkus.profile=rest"
+cd server && mvn exec:exec -Dtransport.mode=rest
+# PowerShell
+cd server ; mvn exec:exec "-Dtransport.mode=rest"
 ```
 
 **Endpoints**:
 
-- REST (HTTP+JSON): `http://localhost:11002`
-- Agent Card: `http://localhost:11002/.well-known/agent-card.json`
+- REST (HTTP+JSON): `http://localhost:11001`
+- Agent Card: `http://localhost:11001/.well-known/agent-card.json`
 
-### Host
+### Client
 
 ```bash
-cd host
-mvn exec:exec -Dexec.args="--transport rest --port 11002 --message 'Check if 13 is prime'"
-# Powershell
-cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11002 --message 'Check if 13 is prime'"""
+cd client && mvn exec:exec -Dexec.args="--transport rest --port 11001 --message 'Check if 13 is prime'"
+# PowerShell
+cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11001 --message 'Check if 13 is prime'"""
 ```
+
+## Configuration
+
+All settings are in `server/src/main/resources/application.properties`.
+Override any property with `-Dkey=value` system properties.
+
+| Property               | Default                      | Description                              |
+|:-----------------------|:-----------------------------|:-----------------------------------------|
+| `transport.mode`       | `grpc`                       | Transport: `grpc`, `jsonrpc`, or `rest`  |
+| `grpc.server.port`     | `11000`                      | gRPC server port                         |
+| `http.port`            | `11001`                      | HTTP port (agent card / JSON-RPC / REST) |
+| `ollama.base-url`      | `http://localhost:11434`     | Ollama API base URL                      |
+| `ollama.model`         | `qwen2.5`                    | Ollama model name                        |
+| `ollama.temperature`   | `0.7`                        | LLM temperature                          |
+| `ollama.timeout`       | `60`                         | Ollama timeout (seconds)                 |
 
 ## Agent Tools
 
@@ -117,5 +133,4 @@ cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11002 --message 'Che
 
 - [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
 - [A2A Java SDK](https://github.com/a2asdk/a2a-java-sdk)
-- [Quarkus Documentation](https://quarkus.io/guides/)
 - [Langchain4j Documentation](https://docs.langchain4j.dev/)

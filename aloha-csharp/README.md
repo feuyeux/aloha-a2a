@@ -1,6 +1,6 @@
 # Aloha A2A - C# Implementation
 
-C# implementation of the A2A protocol with agent and host components. Currently supports REST transport with plans for JSON-RPC 2.0 and gRPC support.
+C# implementation of the A2A protocol with server and client components. Currently supports REST transport with plans for JSON-RPC 2.0 and gRPC support.
 
 ## Requirements
 
@@ -12,27 +12,27 @@ C# implementation of the A2A protocol with agent and host components. Currently 
 
 ```
 aloha-csharp/
-├── Agent/              # Agent (server) implementation
+├── Server/             # Server implementation
 │   ├── A2AModels.cs
-│   ├── DiceAgent.cs
+│   ├── AlohaServer.cs
 │   ├── DiceAgentExecutor.cs
 │   ├── RestTransportHandler.cs
 │   ├── Tools.cs
 │   ├── Program.cs
 │   ├── appsettings.json
-│   └── Agent.csproj
-├── Host/               # Host (client) implementation
+│   └── Server.csproj
+├── Client/             # Client implementation
 │   ├── A2AModels.cs
 │   ├── RestClient.cs
 │   ├── Program.cs
-│   └── Host.csproj
+│   └── Client.csproj
 ├── Aloha.A2A.sln       # Solution file
 └── README.md           # This file
 ```
 
 ## Architecture
 
-### Agent
+### Server
 
 ```
 Program.cs (Entry Point)
@@ -44,14 +44,14 @@ DiceAgentExecutor (Business Logic)
 Semantic Kernel + Tools (LLM + Functions)
 ```
 
-### Host
+### Client
 
 ```
 Program.cs (CLI)
     ↓
 RestClient / JsonRpcClient
     ↓
-Agent REST / JSON-RPC API
+Server REST / JSON-RPC API
 ```
 
 ### Key Design Decisions
@@ -63,7 +63,7 @@ Agent REST / JSON-RPC API
 
 ## Dependencies
 
-### Agent
+### Server
 
 - Microsoft.SemanticKernel v1.72.0 - LLM integration
 - Grpc.AspNetCore v2.76.0 - gRPC support (future)
@@ -71,7 +71,7 @@ Agent REST / JSON-RPC API
 - Microsoft.AspNetCore.OpenApi v9.0.13 - OpenAPI endpoint support
 - System.Text.Json v10.0.3 - JSON serialization
 
-### Host
+### Client
 
 - Grpc.Net.Client v2.76.0 - gRPC client (future)
 - System.CommandLine v2.0.3 - CLI interface
@@ -137,7 +137,7 @@ dotnet restore
 Copy the example environment file:
 
 ```bash
-cd Agent
+cd Server
 cp .env.example .env
 ```
 
@@ -148,16 +148,16 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5
 ```
 
-## Running the Agent
+## Running the Server
 
-The agent currently supports REST transport. In experimental mode, it also exposes a JSON-RPC `message/send` POC endpoint:
+The server currently supports REST transport. In experimental mode, it also exposes a JSON-RPC `message/send` POC endpoint:
 
 ```bash
-cd Agent
+cd Server
 dotnet run
 ```
 
-The agent will be available on:
+The server will be available on:
 
 - REST: `http://localhost:15002`
 - Agent Card: `http://localhost:15002/.well-known/agent-card.json`
@@ -165,12 +165,12 @@ The agent will be available on:
 
 Note: JSON-RPC stream and gRPC transports are still not implemented end-to-end.
 
-## Running the Host
+## Running the Client
 
 ### REST Transport (Default)
 
 ```bash
-cd Host
+cd Client
 dotnet run -- --message "Roll a 6-sided dice"
 ```
 
@@ -209,13 +209,13 @@ To enable SDK POC mode for non-REST experiments:
 set A2A_EXPERIMENTAL_TRANSPORTS=1
 ```
 
-Without this flag, host will reject `--transport grpc|jsonrpc` and agent will run REST-only.
+Without this flag, client will reject `--transport grpc|jsonrpc` and server will run REST-only.
 
 Experimental JSON-RPC send example:
 
 ```bash
 set A2A_EXPERIMENTAL_TRANSPORTS=1
-cd Host
+cd Client
 dotnet run -- --transport jsonrpc --host localhost --port 15002 --message "Is 17 prime?"
 
 ```
@@ -234,9 +234,9 @@ JSON-RPC send POC validation script:
 
 ## Configuration
 
-### Agent Configuration
+### Server Configuration
 
-Edit `Agent/appsettings.json`:
+Edit `Server/appsettings.json`:
 
 ```json
 {
@@ -252,7 +252,7 @@ Edit `Agent/appsettings.json`:
 }
 ```
 
-### Host Configuration
+### Client Configuration
 
 Command-line arguments:
 
@@ -349,19 +349,19 @@ dotnet build
 
 ## Cross-Language Testing
 
-The C# agent can communicate with hosts written in any supported language via REST:
+The C# server can communicate with clients written in any supported language via REST:
 
 ```bash
-# Python host -> C# agent
-cd ../aloha-python/host
-python -m host --transport rest --port 15002 --message "Roll a dice"
+# Python client -> C# server
+cd ../aloha-python/client
+python -m client --transport rest --port 15002 --message "Roll a dice"
 
-# JavaScript host -> C# agent
-cd ../aloha-js/host
+# JavaScript client -> C# server
+cd ../aloha-js/client
 npm start -- --transport rest --port 15002 --message "Roll a dice"
 
-# C# host -> Python agent
-cd Host
+# C# client -> Python server
+cd Client
 dotnet run -- --port 13002 --message "Roll a dice"
 ```
 
@@ -420,7 +420,7 @@ dotnet run
 
 ### Port Already in Use
 
-If ports are already in use, modify the ports in `appsettings.json`.
+If ports are already in use, modify the ports in `Server/appsettings.json`.
 
 ### Build Errors
 

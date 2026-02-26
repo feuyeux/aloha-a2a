@@ -1,6 +1,6 @@
 # Python A2A Implementation
 
-This directory contains Python implementations of both A2A agent (server) and host (client) with REST-first support.
+This directory contains Python implementations of both A2A server and client with REST-first support.
 
 ## Features
 
@@ -17,7 +17,7 @@ This directory contains Python implementations of both A2A agent (server) and ho
 
 ## Ollama Setup
 
-Before running the agent, you need to install and configure Ollama:
+Before running the server, you need to install and configure Ollama:
 
 ### 1. Install Ollama
 
@@ -59,14 +59,14 @@ curl http://localhost:11434/api/tags
 ### Using uv (recommended)
 
 ```bash
-# Install agent dependencies
-cd agent
+# Install server dependencies
+cd server
 uv venv
 source .venv/bin/activate
 uv pip install -e .
 
-# Install host dependencies (optional)
-cd ../host
+# Install client dependencies (optional)
+cd ../client
 uv venv
 source .venv/bin/activate
 uv pip install -e .
@@ -75,43 +75,43 @@ uv pip install -e .
 ### Using pip
 
 ```bash
-# Install agent dependencies
-cd agent
+# Install server dependencies
+cd server
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Install host dependencies (optional)
-cd ../host
+# Install client dependencies (optional)
+cd ../client
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
-## Running the Agent
+## Running the Server
 
-The agent runs on port 13002 with REST transport (default).
+The server runs on port 13002 with REST transport (default).
 
-### Start the agent
+### Start the server
 
 ```bash
-cd agent
-uv run python -m agent
+cd server
+uv run python -m server
 ```
 
 Or with virtual environment:
 
 ```bash
-cd agent
+cd server
 source .venv/bin/activate
-python -m agent
+python -m server
 ```
 
 ### With custom port
 
 ```bash
 export REST_PORT=12002
-uv run python -m agent
+uv run python -m server
 ```
 
 ### Agent Card
@@ -129,21 +129,21 @@ http://localhost:13002/.well-known/agent-card.json
 ./test_python_e2e.sh
 ```
 
-## Running the Host
+## Running the Client
 
-The host is a command-line client that connects to agents using REST transport.
+The client is a command-line client that connects to agents using REST transport.
 
 ### Basic usage
 
 ```bash
-cd host
+cd client
 uv run python __main__.py --message "Roll a 20-sided dice"
 ```
 
 Or with virtual environment:
 
 ```bash
-cd host
+cd client
 source .venv/bin/activate
 python __main__.py --message "Roll a 20-sided dice"
 ```
@@ -169,14 +169,14 @@ curl http://localhost:13002/v1/transports
 uv run python __main__.py --transport rest --port 13002 --probe
 ```
 
-**Note**: The host currently has some compatibility issues with the A2A SDK. For testing, use the provided test script or direct API calls.
+**Note**: The client currently has some compatibility issues with the A2A SDK. For testing, use the provided test script or direct API calls.
 
 ## Examples
 
 ### Roll a dice
 
 ```bash
-cd agent
+cd server
 uv run python -c "
 import asyncio
 import os
@@ -194,7 +194,7 @@ asyncio.run(test())
 ### Check prime numbers
 
 ```bash
-cd agent
+cd server
 uv run python -c "
 import asyncio
 import os
@@ -212,7 +212,7 @@ asyncio.run(test())
 ### Roll and check if prime (Chinese)
 
 ```bash
-cd agent
+cd server
 uv run python -c "
 import asyncio
 import os
@@ -229,10 +229,10 @@ asyncio.run(test())
 
 ## Architecture
 
-### Agent Structure
+### Server Structure
 
 ```
-agent/
+server/
 ├── agent.py              # Main agent with multi-transport setup
 ├── agent_executor.py     # Agent executor with LLM integration
 ├── tools.py              # Tool implementations (roll_dice, check_prime)
@@ -240,10 +240,10 @@ agent/
 └── pyproject.toml        # Dependencies
 ```
 
-### Host Structure
+### Client Structure
 
 ```
-host/
+client/
 ├── client.py             # A2A client with multi-transport support
 ├── __main__.py           # CLI entry point
 └── pyproject.toml        # Dependencies
@@ -255,7 +255,7 @@ This agent uses Ollama with the qwen2.5 model for natural language understanding
 
 ### Configuration
 
-The agent reads Ollama configuration from environment variables:
+The server reads Ollama configuration from environment variables:
 
 ```bash
 # Copy the example configuration
@@ -303,7 +303,7 @@ ruff check .
 
 ## Troubleshooting
 
-### Agent won't start
+### Server won't start
 
 1. Check if ports are available:
 
@@ -326,9 +326,9 @@ ruff check .
    ollama list
    ```
 
-### Host can't connect
+### Client can't connect
 
-1. Verify agent is running:
+1. Verify server is running:
 
    ```bash
    curl http://localhost:11002/.well-known/agent-card.json

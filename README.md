@@ -5,21 +5,23 @@ The [A2A protocol](https://a2a-protocol.org) standardizes communication between 
 ## 🚀 Features
 
 - **Multi-Language Support**: Full implementations in 5 major languages.
-- **Interoperability**: Any host (client) can communicate with any agent (server) across languages.
+- **Interoperability**: Any client can communicate with any server across languages.
 - **Streaming**: Real-time bidirectional data flow support.
 - **Standardized**: Adheres to the A2A specification for message formats and transport.
 
 ## 📂 Language Implementations
 
-Each directory contains a complete Agent and Host implementation with its own detailed documentation.
+Each directory contains a complete Server and Client implementation with its own detailed documentation.
 
-| Language | Agent | Host | SDK Version | SDK URL |
+| Language | Server | Client | SDK Version | SDK URL |
 |----------|-------|------|-------------|---------|
 | Java | ✓ | ✓ | v0.3.3.Final | <https://github.com/a2asdk/a2a-java-sdk> |
 | Python | ✓ | ✓ | v0.3.10 | <https://github.com/a2aproject/a2a-python> |
 | JavaScript/TypeScript | ✓ | ✓ | v0.3.4 | <https://github.com/a2aproject/a2a-js> |
 | C# | ✓ | ✓ | | <https://github.com/a2asdk/a2a-csharp-sdk> |
 | Go | ✓ | ✓ | | <https://github.com/a2aproject/a2a-go> |
+
+<https://github.com/a2aproject>
 
 ## 🛠️ Prerequisites
 
@@ -56,21 +58,21 @@ Configure ports via environment variables:
 
 1. **Choose a language** from the table above.
 2. Navigate to its directory (e.g., `cd aloha-python`).
-3. Follow the **README** in that folder to install dependencies and start the Agent.
-4. Run the corresponding Host (or a Host from another language) to exchange messages.
+3. Follow the **README** in that folder to install dependencies and start the Server.
+4. Run the corresponding Client (or a Client from another language) to exchange messages.
 
 **Example (Python):**
 
 ```bash
-# Terminal 1: Start Agent
-cd aloha-python/agent
+# Terminal 1: Start Server
+cd aloha-python/server
 pip install -e .
-python -m agent
+python -m server
 
-# Terminal 2: Run Host
-cd aloha-python/host
+# Terminal 2: Run Client
+cd aloha-python/client
 pip install -e .
-python -m host --message "Hello A2A!"
+python -m client --message "Hello A2A!"
 ```
 
 ## 📄 License

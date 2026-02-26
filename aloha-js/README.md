@@ -6,8 +6,8 @@ This directory contains the JavaScript/TypeScript implementation of the Aloha A2
 
 The implementation provides:
 
-- **Agent**: A dice rolling agent that can roll arbitrary N-sided dice and check if numbers are prime
-- **Host**: A client that communicates with agents via REST transport
+- **Server**: A dice rolling agent that can roll arbitrary N-sided dice and check if numbers are prime
+- **Client**: A client that communicates with agents via REST transport
 - **Transport Support**: REST (implemented), with JSON-RPC and gRPC planned
 
 ## Prerequisites
@@ -20,7 +20,7 @@ The implementation provides:
 
 ```
 aloha-js/
-├── agent/                 # Agent (server) implementation
+├── server/                # Server implementation
 │   ├── src/
 │   │   ├── tools.ts      # Dice rolling and prime checking tools
 │   │   ├── executor.ts   # Agent executor with LLM integration (Genkit)
@@ -29,7 +29,7 @@ aloha-js/
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── .env.example
-├── host/                  # Host (client) implementation
+├── client/                # Client implementation
 │   ├── src/
 │   │   ├── client.ts     # A2A client with REST transport support
 │   │   └── index.ts      # CLI entry point
@@ -38,7 +38,7 @@ aloha-js/
 └── README.md
 ```
 
-## Agent Setup
+## Server Setup
 
 ### 1. Install Ollama
 
@@ -78,7 +78,7 @@ ollama list
 ### 4. Install Dependencies
 
 ```bash
-cd agent
+cd server
 npm install
 ```
 
@@ -114,7 +114,7 @@ AGENT_VERSION=1.0.0
 npm run build
 ```
 
-### 7. Run the Agent
+### 7. Run the Server
 
 ```bash
 npm start
@@ -126,7 +126,7 @@ Or for development with auto-reload:
 npm run dev
 ```
 
-The agent will start and display:
+The server will start and display:
 
 ```
 ============================================================
@@ -140,12 +140,12 @@ Note: JSON-RPC and gRPC transports require additional SDK support
 ============================================================
 ```
 
-## Host Setup
+## Client Setup
 
 ### 1. Install Dependencies
 
 ```bash
-cd host
+cd client
 npm install
 ```
 
@@ -155,7 +155,7 @@ npm install
 npm run build
 ```
 
-### 3. Run the Host
+### 3. Run the Client
 
 Send a message to the agent:
 
@@ -183,21 +183,21 @@ Options:
 
 ## Example Usage
 
-### Start the Agent
+### Start the Server
 
 ```bash
-cd agent
+cd server
 npm install
 npm run build
 npm start
 ```
 
-### Send Messages from Host
+### Send Messages from Client
 
 In another terminal:
 
 ```bash
-cd host
+cd client
 npm install
 npm run build
 
@@ -347,11 +347,11 @@ npm run format
 
 The implementation follows the A2A Protocol specification and uses the official @a2a-js/sdk.
 
-### Agent Architecture
+### Server Architecture
 
 ```
 ┌─────────────────────────────────────┐
-│         DiceAgent                    │
+│         AlohaServer                  │
 ├─────────────────────────────────────┤
 │  - Agent Card                        │
 │  - Task Store                        │
@@ -386,7 +386,7 @@ The implementation follows the A2A Protocol specification and uses the official 
 └─────────────────────────────────────┘
 ```
 
-### Host Architecture
+### Client Architecture
 
 ```
 ┌─────────────────────────────────────┐
@@ -419,7 +419,7 @@ The implementation follows the A2A Protocol specification and uses the official 
 
 ## Troubleshooting
 
-### Agent won't start
+### Server won't start
 
 1. Check that the ports are not already in use
 2. Verify that dependencies are installed: `npm install`
@@ -427,24 +427,24 @@ The implementation follows the A2A Protocol specification and uses the official 
 4. Review the console output for error messages
 5. Ensure Ollama is running: `ollama list`
 
-### Host can't connect to agent
+### Client can't connect to server
 
-1. Verify the agent is running
+1. Verify the server is running
 2. Check the host/port configuration
 3. Ensure the transport protocol matches (use `rest` for now)
 4. Test the agent card endpoint: `curl http://localhost:14002/.well-known/agent-card.json`
 
 ## Cross-Language Interoperability
 
-This JavaScript implementation is designed to work with agents and hosts implemented in other languages (Java, Python, C#, Go) as long as they follow the A2A protocol specification.
+This JavaScript implementation is designed to work with servers and clients implemented in other languages (Java, Python, C#, Go) as long as they follow the A2A protocol specification.
 
 ### Testing with Other Languages
 
 ```bash
-# JavaScript host -> Python agent
+# JavaScript client -> Python server
 node dist/index.js --host localhost --port 13002 --message "Roll a dice"
 
-# JavaScript host -> Java agent
+# JavaScript client -> Java server
 node dist/index.js --host localhost --port 11002 --message "Roll a dice"
 ```
 

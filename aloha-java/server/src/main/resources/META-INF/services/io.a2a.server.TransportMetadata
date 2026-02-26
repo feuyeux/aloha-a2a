@@ -1,0 +1,3 @@
+com.aloha.a2a.server.transport.GrpcTransportMetadata
+com.aloha.a2a.server.transport.JsonRpcTransportMetadata
+com.aloha.a2a.server.transport.RestTransportMetadata
