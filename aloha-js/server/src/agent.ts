@@ -1,8 +1,9 @@
 /**
- * Aloha Server with REST transport support.
+ * Aloha Server with multi-transport support (REST, JSON-RPC, gRPC).
  */
 
 import express from 'express';
+import * as grpc from '@grpc/grpc-js';
 import { v4 as uuidv4 } from 'uuid';
 import {
     AgentCard,
@@ -20,32 +21,37 @@ import {
     ExecutionEventBus,
     DefaultRequestHandler,
 } from '@a2a-js/sdk/server';
-import { A2AExpressApp } from '@a2a-js/sdk/server/express';
+import { A2AExpressApp, jsonRpcHandler, agentCardHandler, UserBuilder } from '@a2a-js/sdk/server/express';
+import { grpcService, A2AService, UserBuilder as GrpcUserBuilder } from '@a2a-js/sdk/server/grpc';
 import { DiceAgentExecutor } from './executor.js';
 
 /**
- * Aloha Server implementing A2A protocol with REST transport support.
+ * Aloha Server implementing A2A protocol with REST, JSON-RPC, and gRPC transport support.
  */
 export class AlohaServer {
     private grpcPort: number;
     private jsonrpcPort: number;
     private restPort: number;
     private host: string;
+    private transportMode: string;
     private agentCard: AgentCard;
     private executor: DiceAgentExecutor;
     private taskStore: TaskStore;
     private contexts: Map<string, Message[]>;
+    private grpcServer: grpc.Server | null = null;
 
     constructor(
         grpcPort: number = 14000,
         jsonrpcPort: number = 14001,
         restPort: number = 14002,
-        host: string = '0.0.0.0'
+        host: string = '0.0.0.0',
+        transportMode: string = 'rest'
     ) {
         this.grpcPort = grpcPort;
         this.jsonrpcPort = jsonrpcPort;
         this.restPort = restPort;
         this.host = host;
+        this.transportMode = transportMode.toLowerCase();
         this.contexts = new Map();
 
         // Create agent card
@@ -57,18 +63,32 @@ export class AlohaServer {
         // Create task store
         this.taskStore = new InMemoryTaskStore();
 
-        console.log('AlohaServer initialized');
+        console.log('Dice Agent initialized');
     }
 
     /**
      * Create the agent card describing capabilities.
      */
     private _createAgentCard(): AgentCard {
+        let url: string;
+        let preferredTransport: string;
+        
+        if (this.transportMode === 'grpc') {
+            url = `localhost:${this.grpcPort}`;
+            preferredTransport = 'GRPC';
+        } else if (this.transportMode === 'jsonrpc') {
+            url = `http://localhost:${this.jsonrpcPort}`;
+            preferredTransport = 'JSONRPC';
+        } else {
+            url = `http://localhost:${this.restPort}`;
+            preferredTransport = 'REST';
+        }
+        
         return {
             protocolVersion: '0.3.0',
             name: process.env.AGENT_NAME || 'Dice Agent',
             description: process.env.AGENT_DESCRIPTION || 'An agent that can roll arbitrary dice and check prime numbers',
-            url: `http://localhost:${this.restPort}`,
+            url: url,
             provider: {
                 organization: 'Aloha A2A',
                 url: 'https://github.com/google/aloha-a2a',
@@ -102,14 +122,17 @@ export class AlohaServer {
                 },
             ],
             supportsAuthenticatedExtendedCard: false,
+            preferredTransport: preferredTransport,
         };
     }
 
     /**
-     * Start the agent server with multi-transport support.
+     * Start the agent server with the configured transport mode.
      */
     async start(): Promise<void> {
-        console.log('Starting Dice Agent with REST transport support');
+        console.log('============================================================');
+        console.log('=== Dice Agent starting ===');
+        console.log('============================================================');
 
         // Create the A2A executor wrapper
         const a2aExecutor = new DiceA2AExecutor(this.executor, this.contexts);
@@ -121,55 +144,120 @@ export class AlohaServer {
             a2aExecutor
         );
 
-        // Setup REST transport (primary transport for now)
-        // Note: The @a2a-js/sdk currently has best support for REST/Express
-        // gRPC and JSON-RPC support may require additional implementation
+        const mode = this.transportMode;
+        
+        if (mode === 'jsonrpc') {
+            await this._startJsonRpc(requestHandler);
+        } else if (mode === 'grpc') {
+            await this._startGrpc(requestHandler);
+        } else {
+            await this._startRest(requestHandler);
+        }
+    }
+
+    /**
+     * Start REST transport.
+     */
+    private async _startRest(requestHandler: DefaultRequestHandler): Promise<void> {
         const appBuilder = new A2AExpressApp(requestHandler);
         const expressApp = appBuilder.setupRoutes(express());
+        this._addTransportEndpoint(expressApp, 'rest');
 
-        expressApp.get('/v1/transports', (_req, res) => {
-            res.json({
-                rest: {
-                    implemented: true,
-                    stream: true,
-                },
-                jsonrpc: {
-                    enabled: false,
-                    implemented: false,
-                    stream: false,
-                },
-                grpc: {
-                    enabled: false,
-                    implemented: false,
-                    stream: false,
-                },
-                experimentalTransports: false,
+        return new Promise((resolve) => {
+            expressApp.listen(this.restPort, () => {
+                console.log('============================================================');
+                console.log('Dice Agent is running with the following transports:');
+                console.log(`  - REST:         http://${this.host}:${this.restPort}`);
+                console.log(`  - Agent Card:   http://${this.host}:${this.restPort}/.well-known/agent-card.json`);
+                console.log('============================================================');
+                resolve();
             });
         });
+    }
 
-        // Start REST server
-        expressApp.listen(this.restPort, () => {
-            console.log('='.repeat(60));
-            console.log('Dice Agent is running with the following transport:');
-            console.log(`  - REST:         http://${this.host}:${this.restPort}`);
-            console.log(`  - Agent Card:   http://${this.host}:${this.restPort}/.well-known/agent-card.json`);
-            console.log('='.repeat(60));
+    /**
+     * Start JSON-RPC transport.
+     */
+    private async _startJsonRpc(requestHandler: DefaultRequestHandler): Promise<void> {
+        const expressApp = express();
+        expressApp.use(express.json());
+        
+        // Add agent card endpoint FIRST (before JSON-RPC handler catches all requests)
+        const agentCard = this.agentCard;
+        expressApp.use('/.well-known/agent-card.json', agentCardHandler({ agentCardProvider: async () => agentCard }));
+        
+        this._addTransportEndpoint(expressApp, 'jsonrpc');
+        
+        // Add JSON-RPC handler (catches remaining requests)
+        expressApp.use(jsonRpcHandler({ requestHandler, userBuilder: UserBuilder.noAuthentication }));
+
+        return new Promise((resolve) => {
+            expressApp.listen(this.jsonrpcPort, () => {
+                console.log('============================================================');
+                console.log('Dice Agent is running with the following transports:');
+                console.log(`  - JSON-RPC:     http://${this.host}:${this.jsonrpcPort}`);
+                console.log(`  - Agent Card:   http://${this.host}:${this.jsonrpcPort}/.well-known/agent-card.json`);
+                console.log('============================================================');
+                resolve();
+            });
+        });
+    }
+
+    /**
+     * Start gRPC transport with REST for agent card.
+     */
+    private async _startGrpc(requestHandler: DefaultRequestHandler): Promise<void> {
+        // Create gRPC server
+        this.grpcServer = new grpc.Server();
+        this.grpcServer.addService(A2AService, grpcService({ requestHandler, userBuilder: GrpcUserBuilder.noAuthentication }));
+        
+        // Bind gRPC server
+        await new Promise<void>((resolve, reject) => {
+            this.grpcServer!.bindAsync(
+                `${this.host}:${this.grpcPort}`,
+                grpc.ServerCredentials.createInsecure(),
+                (error, port) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+        });
+        
+        // Start Express for agent card HTTP endpoint
+        const expressApp = express();
+        const agentCard = this.agentCard;
+        expressApp.use('/.well-known/agent-card.json', agentCardHandler({ agentCardProvider: async () => agentCard }));
+        this._addTransportEndpoint(expressApp, 'grpc');
+        
+        return new Promise((resolve) => {
+            expressApp.listen(this.restPort, () => {
+                console.log('============================================================');
+                console.log('Dice Agent is running with the following transports:');
+                console.log(`  - gRPC:         ${this.host}:${this.grpcPort}`);
+                console.log(`  - Agent Card:   http://${this.host}:${this.restPort}/.well-known/agent-card.json`);
+                console.log('============================================================');
+                resolve();
+            });
+        });
+    }
+
+    /**
+     * Add transport capabilities endpoint.
+     */
+    private _addTransportEndpoint(app: express.Application, activeMode: string): void {
+        app.get('/v1/transports', (_req, res) => {
+            res.json({
+                rest: { implemented: true, stream: true },
+                jsonrpc: { implemented: true, stream: true },
+                grpc: { implemented: true, stream: true },
+                activeTransport: activeMode,
+            });
         });
     }
 }
-
-/**
- * A2A Protocol Error Codes
- */
-const A2AErrorCode = {
-    INVALID_REQUEST: 'invalid_request',
-    UNSUPPORTED_OPERATION: 'unsupported_operation',
-    TASK_NOT_FOUND: 'task_not_found',
-    INTERNAL_ERROR: 'internal_error',
-    TIMEOUT: 'timeout',
-    CANCELED: 'canceled',
-    VALIDATION_ERROR: 'validation_error',
-};
 
 /**
  * Validation error class

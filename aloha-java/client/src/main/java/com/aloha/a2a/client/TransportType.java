@@ -28,7 +28,7 @@ public enum TransportType {
      * Default port: 11001
      */
     JSONRPC("jsonrpc"),
-    
+
     /**
      * gRPC transport using Protocol Buffers.
      * <p>
@@ -36,7 +36,7 @@ public enum TransportType {
      * Default port: 11000
      */
     GRPC("grpc"),
-    
+
     /**
      * REST transport over HTTP using JSON (HTTP+JSON).
      * <p>
@@ -44,17 +44,17 @@ public enum TransportType {
      * Default port: 11002
      */
     REST("rest");
-    
+
     private final String value;
-    
+
     TransportType(String value) {
         this.value = value;
     }
-    
+
     public String getValue() {
         return value;
     }
-    
+
     /**
      * Parses a transport type from its string value.
      * <p>
@@ -68,17 +68,17 @@ public enum TransportType {
         if (value == null) {
             throw new IllegalArgumentException("Transport type cannot be null");
         }
-        
+
         for (TransportType type : values()) {
             if (type.value.equalsIgnoreCase(value)) {
                 return type;
             }
         }
-        
-        throw new IllegalArgumentException("Unknown transport type: " + value + 
+
+        throw new IllegalArgumentException("Unknown transport type: " + value +
                 ". Supported types: jsonrpc, grpc, rest");
     }
-    
+
     @Override
     public String toString() {
         return value;

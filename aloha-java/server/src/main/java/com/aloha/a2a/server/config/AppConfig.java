@@ -83,6 +83,10 @@ public class AppConfig {
         return getInt("http.port", 11001);
     }
 
+    public int getRestPort() {
+        return getInt("rest.port", 11002);
+    }
+
     public String getOllamaBaseUrl() {
         return get("ollama.base-url", "http://localhost:11434");
     }

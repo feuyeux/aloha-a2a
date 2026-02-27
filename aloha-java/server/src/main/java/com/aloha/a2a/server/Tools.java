@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * @see dev.langchain4j.agent.tool.Tool
  */
 public class Tools {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(Tools.class);
     private final Random random = new Random();
 
@@ -39,7 +39,7 @@ public class Tools {
      *   <li>"Roll a 6-sided dice" → calls rollDice(6)</li>
      *   <li>"Roll a d20" → calls rollDice(20)</li>
      * </ul>
-     * 
+     *
      * @param sides the number of sides on the dice (must be positive)
      * @return the result of the dice roll, a random integer from 1 to sides (inclusive)
      * @throws IllegalArgumentException if sides is less than or equal to 0
@@ -50,7 +50,7 @@ public class Tools {
             logger.error("Invalid dice sides: {}", sides);
             throw new IllegalArgumentException("Dice must have at least 1 side");
         }
-        
+
         int result = random.nextInt(sides) + 1;
         logger.info("Rolled {}-sided dice: {}", sides, result);
         return result;
@@ -68,30 +68,30 @@ public class Tools {
      *   <li>"Is 17 prime?" → calls checkPrime([17])</li>
      *   <li>"Check if 2, 4, 7, 9, 11 are prime" → calls checkPrime([2, 4, 7, 9, 11])</li>
      * </ul>
-     * 
+     *
      * @param numbers the list of integers to check for primality (must not be null)
      * @return a human-readable string describing which numbers are prime,
-     *         or a message indicating no primes were found
+     * or a message indicating no primes were found
      */
     @Tool("Checks if the given numbers are prime and returns which ones are prime")
     public String checkPrime(List<Integer> numbers) {
         if (numbers == null || numbers.isEmpty()) {
             return "No numbers provided to check.";
         }
-        
+
         List<Integer> primes = numbers.stream()
                 .filter(this::isPrime)
                 .toList();
-        
+
         if (primes.isEmpty()) {
             logger.info("No prime numbers found in: {}", numbers);
             return "None of the numbers are prime.";
         }
-        
+
         String result = primes.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(", ")) + " are prime numbers.";
-        
+
         logger.info("Prime check for {}: {}", numbers, result);
         return result;
     }
@@ -110,7 +110,7 @@ public class Tools {
      *   <li>Even numbers > 2 are not prime</li>
      *   <li>For odd numbers, check divisibility by odd numbers from 3 to √n</li>
      * </ol>
-     * 
+     *
      * @param n the number to check for primality
      * @return {@code true} if the number is prime, {@code false} otherwise
      */
@@ -124,14 +124,14 @@ public class Tools {
         if (n % 2 == 0) {
             return false;
         }
-        
+
         int sqrt = (int) Math.sqrt(n);
         for (int i = 3; i <= sqrt; i += 2) {
             if (n % i == 0) {
                 return false;
             }
         }
-        
+
         return true;
     }
 }

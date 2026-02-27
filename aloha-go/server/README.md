@@ -57,9 +57,9 @@ Configure the server using environment variables:
 
 ```bash
 # Server Ports
-export JSONRPC_PORT=11000  # JSON-RPC WebSocket port
-export GRPC_PORT=11001     # gRPC port
-export REST_PORT=11002     # REST HTTP port
+export JSONRPC_PORT=12001  # JSON-RPC WebSocket port
+export GRPC_PORT=12000     # gRPC port
+export REST_PORT=12002     # REST HTTP port
 export HOST=0.0.0.0        # Bind address
 
 # Ollama Configuration
@@ -78,16 +78,16 @@ go run .
 
 The server will start and listen on all three transports:
 
-- JSON-RPC 2.0: `ws://localhost:11000`
-- gRPC: `localhost:11001`
-- REST: `http://localhost:11002`
+- JSON-RPC 2.0: `ws://localhost:12001`
+- gRPC: `localhost:12000`
+- REST: `http://localhost:12002`
 
 ## Agent Card
 
 Fetch the agent card to discover capabilities:
 
 ```bash
-curl http://localhost:11002/.well-known/agent-card.json
+curl http://localhost:12002/.well-known/agent-card.json
 ```
 
 ## Example Requests
@@ -96,7 +96,7 @@ curl http://localhost:11002/.well-known/agent-card.json
 
 ```bash
 # Send a message
-curl -X POST http://localhost:11002/v1/message:send \
+curl -X POST http://localhost:12002/v1/message:send \
   -H "Content-Type: application/json" \
   -d '{
     "kind": "message",
@@ -105,7 +105,7 @@ curl -X POST http://localhost:11002/v1/message:send \
   }'
 
 # Probe transport capabilities
-curl http://localhost:11002/v1/transports
+curl http://localhost:12002/v1/transports
 ```
 
 ### JSON-RPC 2.0

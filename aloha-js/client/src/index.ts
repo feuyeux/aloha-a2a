@@ -17,11 +17,11 @@ async function main() {
 
     program
         .name('aloha-js-client')
-        .description('A2A Client (REST transport)')
+        .description('A2A Client (REST, JSON-RPC, gRPC transports)')
         .version('1.0.0')
-        .option('-t, --transport <type>', 'Transport protocol to use (rest)', 'rest')
+        .option('-t, --transport <type>', 'Transport protocol to use (rest, jsonrpc, grpc)', 'rest')
         .option('-h, --host <hostname>', 'Agent hostname', 'localhost')
-        .option('-p, --port <port>', 'Agent port (default: 14002 for REST)')
+        .option('-p, --port <port>', 'Agent port (default: 14002 for REST, 14001 for JSON-RPC, 14000 for gRPC)')
         .option('-m, --message <text>', 'Message to send')
         .option('--probe', 'Probe transport capabilities and exit')
         .option('-c, --context <id>', 'Context ID for conversation continuity')
@@ -36,16 +36,33 @@ async function main() {
     // Set default port based on transport if not specified
     let port = options.port;
     if (!port) {
-        port = '14002';
+        switch (transport) {
+            case 'grpc':
+                port = '14000';
+                break;
+            case 'jsonrpc':
+                port = '14001';
+                break;
+            case 'rest':
+            default:
+                port = '14002';
+                break;
+        }
     }
 
-    if (transport !== 'rest') {
+    // Validate transport
+    if (!['rest', 'jsonrpc', 'grpc'].includes(transport)) {
         console.error(`Unsupported transport: ${transport}`);
-        console.error('This host currently supports only: rest');
+        console.error('Supported transports: rest, jsonrpc, grpc');
         process.exit(1);
     }
 
-    serverUrl = `http://${options.host}:${port}`;
+    // Build server URL - gRPC doesn't use http:// prefix
+    if (transport === 'grpc') {
+        serverUrl = `${options.host}:${port}`;
+    } else {
+        serverUrl = `http://${options.host}:${port}`;
+    }
 
     console.log('='.repeat(60));
     console.log('A2A Host Client');

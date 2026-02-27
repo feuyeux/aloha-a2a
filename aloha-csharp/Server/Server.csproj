@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="A2A" Version="0.3.3-preview" />
+    <PackageReference Include="A2A.AspNetCore" Version="0.3.3-preview" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.72.0" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageReference Include="Grpc.AspNetCore.Server" Version="2.76.0" />

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -8,11 +9,7 @@
         <artifactId>aloha-java-parent</artifactId>
         <version>1.0.0</version>
     </parent>
-
     <artifactId>aloha-java-server</artifactId>
-    <name>Aloha A2A Java - Server</name>
-    <description>Java A2A agent with multi-transport support (pure Java, no framework)</description>
-
     <properties>
         <!-- Default transport mode, override with -Dtransport.mode=jsonrpc etc. -->
         <transport.mode>grpc</transport.mode>
@@ -105,7 +102,9 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <configuration>
                     <executable>java</executable>
-                    <commandlineArgs>-Dtransport.mode=${transport.mode} -classpath %classpath com.aloha.a2a.server.AlohaServer</commandlineArgs>
+                    <commandlineArgs>-Dtransport.mode=${transport.mode} -classpath %classpath
+                        com.aloha.a2a.server.AlohaServer
+                    </commandlineArgs>
                 </configuration>
             </plugin>
         </plugins>

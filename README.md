@@ -2,24 +2,13 @@
 
 The [A2A protocol](https://a2a-protocol.org) standardizes communication between AI agents, enabling seamless interaction regardless of the underlying technology stack.
 
-## 🚀 Features
-
-- **Multi-Language Support**: Full implementations in 5 major languages.
-- **Interoperability**: Any client can communicate with any server across languages.
-- **Streaming**: Real-time bidirectional data flow support.
-- **Standardized**: Adheres to the A2A specification for message formats and transport.
-
-## 📂 Language Implementations
-
-Each directory contains a complete Server and Client implementation with its own detailed documentation.
-
-| Language | Server | Client | SDK Version | SDK URL |
-|----------|-------|------|-------------|---------|
-| Java | ✓ | ✓ | v0.3.3.Final | <https://github.com/a2asdk/a2a-java-sdk> |
-| Python | ✓ | ✓ | v0.3.10 | <https://github.com/a2aproject/a2a-python> |
-| JavaScript/TypeScript | ✓ | ✓ | v0.3.4 | <https://github.com/a2aproject/a2a-js> |
-| C# | ✓ | ✓ | | <https://github.com/a2asdk/a2a-csharp-sdk> |
-| Go | ✓ | ✓ | | <https://github.com/a2aproject/a2a-go> |
+| Language | SDK Version | SDK URL | Dependency Definition | gRPC | JSON-RPC | REST |
+|:---------|:------------|:--------|:----------------------|:-----|:---------|:-----|
+| Java | v0.3.3.Final | [a2a-java](https://github.com/a2aproject/a2a-java) | [pom.xml:26](aloha-java/pom.xml#L26) | 11000 ✅ | 11001 ✅ | 11002 ✅ |
+| Python | v0.3.10 | [a2a-python](https://github.com/a2aproject/a2a-python) | [pyproject.toml:7](aloha-python/server/pyproject.toml#L7) | 13000 ✅ | 13001 ✅ | 13002 ✅ |
+| JS/TS | v0.3.4 | [a2a-js](https://github.com/a2aproject/a2a-js) | [package.json:23](aloha-js/server/package.json#L23) | 14000 ✅ | 14001 ✅ | 14002 ✅ |
+| C# | 0.3.3-preview | [a2a-dotnet](https://github.com/a2aproject/a2a-dotnet) | [Server.csproj](aloha-csharp/Server/Server.csproj) | ❌ | 15001 ✅ | 15002 ✅ |
+| Go | v0.3.7 | [a2a-go](https://github.com/a2aproject/a2a-go) | [go.mod](aloha-go/go.mod) | 12000 ✅ | 12001 ✅ | 12002 ✅ |
 
 <https://github.com/a2aproject>
 
@@ -32,27 +21,6 @@ To run the agents, you need **[Ollama](https://ollama.ai/)** installed and runni
 3. **Start Service**: `ollama serve`
 
 You will also need the specific runtime for your chosen language (JDK 21+, Python 3.11+, Node.js 18+, .NET 9.0, or Go 1.24+).
-
-## 🔌 Configuration & Ports
-
-To prevent conflicts when running multiple agents simultaneously, each language uses a dedicated port range.
-
-| Language | gRPC | JSON-RPC | REST |
-|:---|:---|:---|:---|
-| **Java** | 11000 | 11001 | 11002 |
-| **Go** | 12000 | 12001 | 12002 |
-| **Python** | 13000 | 13001 | 13002 |
-| **JS/TS** | 14000 | 14001 | 14002 |
-| **C#** | 15000 | 15001 | 15002 |
-
-Configure ports via environment variables:
-
-| Variable | Description | Default |
-|----------|-------------|--------|
-| `GRPC_PORT` | gRPC transport port | language default |
-| `JSONRPC_PORT` | JSON-RPC transport port | language default |
-| `REST_PORT` | REST transport port | language default |
-| `HOST` | Bind address | `0.0.0.0` |
 
 ## 🏃 Quick Start
 
@@ -74,7 +42,3 @@ cd aloha-python/client
 pip install -e .
 python -m client --message "Hello A2A!"
 ```
-
-## 📄 License
-
-See individual project directories or LICENSE file for details.

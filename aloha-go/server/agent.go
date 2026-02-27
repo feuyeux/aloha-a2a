@@ -4,67 +4,69 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
-	"github.com/aloha/a2a-go/pkg/protocol"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
+	"github.com/a2aproject/a2a-go/a2a"
+	"github.com/a2aproject/a2a-go/a2agrpc"
+	"github.com/a2aproject/a2a-go/a2asrv"
 	"google.golang.org/grpc"
 )
 
-const experimentalTransportsEnv = "A2A_EXPERIMENTAL_TRANSPORTS"
-
-// AlohaServer represents the A2A agent with multi-transport support
+// AlohaServer represents the A2A agent with multi-transport support using the official SDK
 type AlohaServer struct {
 	jsonrpcPort int
 	grpcPort    int
 	restPort    int
 	host        string
 
-	agentCard *protocol.AgentCard
-	executor  *DiceAgentExecutor
-
-	servers []interface{}
-	mu      sync.Mutex
+	executor       *DiceAgentExecutor
+	requestHandler a2asrv.RequestHandler
+	agentCard      *a2a.AgentCard
 }
 
 // NewAlohaServer creates a new Aloha Server instance
 func NewAlohaServer(grpcPort, jsonrpcPort, restPort int, host string) *AlohaServer {
+	executor := NewDiceAgentExecutor()
+
 	server := &AlohaServer{
 		grpcPort:    grpcPort,
 		jsonrpcPort: jsonrpcPort,
 		restPort:    restPort,
 		host:        host,
-		executor:    NewDiceAgentExecutor(),
+		executor:    executor,
 	}
 
+	// Create agent card
 	server.agentCard = server.createAgentCard()
 
-	log.Println("AlohaServer initialized")
+	// Create transport-agnostic request handler using the SDK
+	server.requestHandler = a2asrv.NewHandler(executor)
+
+	log.Println("Dice Agent initialized with A2A SDK")
 	return server
 }
 
 // createAgentCard creates the agent card describing capabilities
-func (a *AlohaServer) createAgentCard() *protocol.AgentCard {
-	return &protocol.AgentCard{
+func (a *AlohaServer) createAgentCard() *a2a.AgentCard {
+	return &a2a.AgentCard{
 		Name:        "Dice Agent",
 		Description: "An agent that can roll arbitrary dice and check prime numbers",
-		URL:         fmt.Sprintf("localhost:%d", a.restPort),
+		URL:         fmt.Sprintf("http://localhost:%d", a.jsonrpcPort),
 		Version:     "1.0.0",
-		Capabilities: protocol.Capability{
-			Streaming:         true,
-			PushNotifications: false,
+		Capabilities: a2a.AgentCapabilities{
+			Streaming: true,
 		},
 		DefaultInputModes:  []string{"text"},
 		DefaultOutputModes: []string{"text"},
-		Skills: []protocol.Skill{
+		Skills: []a2a.AgentSkill{
 			{
 				ID:          "roll-dice",
 				Name:        "Roll Dice",
@@ -80,17 +82,50 @@ func (a *AlohaServer) createAgentCard() *protocol.AgentCard {
 				Examples:    []string{"Is 17 prime?"},
 			},
 		},
-		PreferredTransport: "rest",
+		AdditionalInterfaces: []a2a.AgentInterface{
+			{
+				Transport: a2a.TransportProtocolGRPC,
+				URL:       fmt.Sprintf("localhost:%d", a.grpcPort),
+			},
+			{
+				Transport: a2a.TransportProtocolJSONRPC,
+				URL:       fmt.Sprintf("http://localhost:%d", a.jsonrpcPort),
+			},
+			{
+				Transport: a2a.TransportProtocolHTTPJSON,
+				URL:       fmt.Sprintf("http://localhost:%d", a.restPort),
+			},
+		},
+		PreferredTransport: a2a.TransportProtocolJSONRPC,
 	}
 }
 
 // Start starts all transport servers
 func (a *AlohaServer) Start(ctx context.Context) error {
-	log.Println("Starting Dice Agent with REST transport support")
-	experimentalTransportsEnabled := os.Getenv(experimentalTransportsEnv) == "1"
+	log.Println("============================================================")
+	log.Println("=== Dice Agent starting ===")
+	log.Println("============================================================")
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, 3)
+
+	// Start gRPC transport
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := a.startGRPCTransport(ctx); err != nil {
+			errChan <- fmt.Errorf("gRPC transport error: %w", err)
+		}
+	}()
+
+	// Start JSON-RPC transport
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := a.startJSONRPCTransport(ctx); err != nil {
+			errChan <- fmt.Errorf("JSON-RPC transport error: %w", err)
+		}
+	}()
 
 	// Start REST transport
 	wg.Add(1)
@@ -101,48 +136,18 @@ func (a *AlohaServer) Start(ctx context.Context) error {
 		}
 	}()
 
-	if experimentalTransportsEnabled {
-		log.Printf("%s=1, starting experimental JSON-RPC/gRPC transports", experimentalTransportsEnv)
-
-		// Start JSON-RPC transport
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := a.startJSONRPCTransport(ctx); err != nil {
-				errChan <- fmt.Errorf("JSON-RPC transport error: %w", err)
-			}
-		}()
-
-		// Start gRPC transport
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := a.startGRPCTransport(ctx); err != nil {
-				errChan <- fmt.Errorf("gRPC transport error: %w", err)
-			}
-		}()
-	}
-
-	// Wait a bit for servers to start
-	time.Sleep(500 * time.Millisecond)
-
 	log.Println("============================================================")
-	log.Println("Dice Agent endpoints:")
-	log.Printf("  - REST:         %s:%d", a.host, a.restPort)
-	log.Printf("  - Agent Card:   http://%s:%d/.well-known/agent-card.json", a.host, a.restPort)
-	if experimentalTransportsEnabled {
-		log.Printf("  - gRPC (experimental):         %s:%d", a.host, a.grpcPort)
-		log.Printf("  - JSON-RPC 2.0 (experimental): %s:%d", a.host, a.jsonrpcPort)
-		log.Println("  - Note: REST is fully implemented; experimental transports are partial")
-	} else {
-		log.Printf("  - Experimental transports disabled (set %s=1 to enable JSON-RPC/gRPC POC)", experimentalTransportsEnv)
-	}
+	log.Println("Dice Agent is running with the following transports:")
+	log.Printf("  - gRPC:         %s:%d", a.host, a.grpcPort)
+	log.Printf("  - JSON-RPC 2.0: http://%s:%d", a.host, a.jsonrpcPort)
+	log.Printf("  - REST:         http://%s:%d", a.host, a.restPort)
+	log.Printf("  - Agent Card:   http://%s:%d/.well-known/agent-card.json", a.host, a.jsonrpcPort)
+	log.Println("  - SDK: github.com/a2aproject/a2a-go v0.3.7")
 	log.Println("============================================================")
 
 	// Wait for context cancellation
 	<-ctx.Done()
 
-	// Check for errors
 	select {
 	case err := <-errChan:
 		return err
@@ -151,36 +156,46 @@ func (a *AlohaServer) Start(ctx context.Context) error {
 	}
 }
 
-// startJSONRPCTransport starts the JSON-RPC 2.0 WebSocket transport
+// startGRPCTransport starts the gRPC transport using the SDK
+func (a *AlohaServer) startGRPCTransport(ctx context.Context) error {
+	log.Printf("Starting gRPC transport on %s:%d", a.host, a.grpcPort)
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", a.host, a.grpcPort))
+	if err != nil {
+		return fmt.Errorf("failed to listen on gRPC port: %w", err)
+	}
+
+	grpcServer := grpc.NewServer()
+
+	// Register A2A gRPC handler from the SDK
+	grpcHandler := a2agrpc.NewHandler(a.requestHandler)
+	grpcHandler.RegisterWith(grpcServer)
+
+	go func() {
+		<-ctx.Done()
+		grpcServer.GracefulStop()
+	}()
+
+	log.Printf("gRPC transport listening on %s:%d", a.host, a.grpcPort)
+	return grpcServer.Serve(listener)
+}
+
+// startJSONRPCTransport starts the JSON-RPC 2.0 transport using the SDK
 func (a *AlohaServer) startJSONRPCTransport(ctx context.Context) error {
 	log.Printf("Starting JSON-RPC transport on %s:%d", a.host, a.jsonrpcPort)
 
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
-
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Printf("WebSocket upgrade error: %v", err)
-			return
-		}
-		defer conn.Close()
 
-		a.handleJSONRPCConnection(ctx, conn)
-	})
+	// Serve agent card at well-known path
+	mux.Handle("/.well-known/agent-card.json", a2asrv.NewStaticAgentCardHandler(a.agentCard))
+
+	// Serve JSON-RPC handler from the SDK at root
+	mux.Handle("/", a2asrv.NewJSONRPCHandler(a.requestHandler))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", a.host, a.jsonrpcPort),
 		Handler: mux,
 	}
-
-	a.mu.Lock()
-	a.servers = append(a.servers, server)
-	a.mu.Unlock()
 
 	go func() {
 		<-ctx.Done()
@@ -191,265 +206,58 @@ func (a *AlohaServer) startJSONRPCTransport(ctx context.Context) error {
 	return server.ListenAndServe()
 }
 
-// handleJSONRPCConnection handles a JSON-RPC WebSocket connection
-func (a *AlohaServer) handleJSONRPCConnection(ctx context.Context, conn *websocket.Conn) {
-	log.Println("New JSON-RPC connection established")
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error: %v", err)
-			}
-			return
-		}
-
-		// Handle JSON-RPC request
-		response := a.handleJSONRPCRequest(ctx, message)
-
-		if err := conn.WriteMessage(websocket.TextMessage, response); err != nil {
-			log.Printf("Write error: %v", err)
-			return
-		}
-	}
-}
-
-// handleJSONRPCRequest processes a JSON-RPC request
-func (a *AlohaServer) handleJSONRPCRequest(ctx context.Context, data []byte) []byte {
-	var request map[string]interface{}
-	if err := json.Unmarshal(data, &request); err != nil {
-		return a.createJSONRPCError(-32700, "Parse error", nil)
-	}
-
-	method, ok := request["method"].(string)
-	if !ok {
-		return a.createJSONRPCError(-32600, "Invalid Request", nil)
-	}
-
-	switch method {
-	case "message/send":
-		return a.handleMessageRequest(ctx, request)
-	case "message/stream":
-		return a.createJSONRPCError(-32001, "message/stream is not fully supported on JSON-RPC transport", request["id"])
-	case "agent/getAuthenticatedExtendedCard":
-		return a.handleAgentCardRequest(request)
-	default:
-		return a.createJSONRPCError(-32601, "Method not found", nil)
-	}
-}
-
-// handleMessageRequest handles message send/stream requests
-func (a *AlohaServer) handleMessageRequest(ctx context.Context, request map[string]interface{}) []byte {
-	params, ok := request["params"].(map[string]interface{})
-	if !ok {
-		return a.createJSONRPCError(-32602, "Invalid params", nil)
-	}
-
-	messageData, ok := params["message"].(map[string]interface{})
-	if !ok {
-		return a.createJSONRPCError(-32602, "Invalid message", nil)
-	}
-
-	// Parse message
-	messageJSON, _ := json.Marshal(messageData)
-	var message protocol.Message
-	if err := json.Unmarshal(messageJSON, &message); err != nil {
-		return a.createJSONRPCError(-32602, "Invalid message format", nil)
-	}
-
-	// Create task
-	taskID := protocol.NewUUID()
-	eventChan := make(chan protocol.Event, 10)
-
-	// Execute in background
-	go func() {
-		defer close(eventChan)
-		if err := a.executor.Execute(ctx, &message, taskID, eventChan); err != nil {
-			log.Printf("Execution error: %v", err)
-		}
-	}()
-
-	// Collect events
-	var events []protocol.Event
-	for event := range eventChan {
-		events = append(events, event)
-	}
-
-	// Return last event (completed status)
-	if len(events) > 0 {
-		lastEvent := events[len(events)-1]
-		eventJSON, _ := json.Marshal(lastEvent)
-
-		result := map[string]interface{}{
-			"jsonrpc": "2.0",
-			"result":  json.RawMessage(eventJSON),
-			"id":      request["id"],
-		}
-
-		response, _ := json.Marshal(result)
-		return response
-	}
-
-	return a.createJSONRPCError(-32603, "Internal error", nil)
-}
-
-// handleAgentCardRequest handles agent card requests
-func (a *AlohaServer) handleAgentCardRequest(request map[string]interface{}) []byte {
-	cardJSON, _ := json.Marshal(a.agentCard)
-
-	result := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"result":  json.RawMessage(cardJSON),
-		"id":      request["id"],
-	}
-
-	response, _ := json.Marshal(result)
-	return response
-}
-
-// createJSONRPCError creates a JSON-RPC error response
-func (a *AlohaServer) createJSONRPCError(code int, message string, id interface{}) []byte {
-	errorResponse := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"error": map[string]interface{}{
-			"code":    code,
-			"message": message,
-		},
-		"id": id,
-	}
-
-	response, _ := json.Marshal(errorResponse)
-	return response
-}
-
-// startGRPCTransport starts the gRPC transport
-func (a *AlohaServer) startGRPCTransport(ctx context.Context) error {
-	log.Printf("Starting gRPC transport on %s:%d", a.host, a.grpcPort)
-
-	// Note: Full gRPC implementation would use the A2A SDK's gRPC server
-	// This is a placeholder that would be replaced with actual SDK integration
-	grpcServer := grpc.NewServer()
-
-	a.mu.Lock()
-	a.servers = append(a.servers, grpcServer)
-	a.mu.Unlock()
-
-	go func() {
-		<-ctx.Done()
-		grpcServer.GracefulStop()
-	}()
-
-	log.Printf("gRPC transport configured on %s:%d (SDK integration pending)", a.host, a.grpcPort)
-
-	// Keep running
-	<-ctx.Done()
-	return nil
-}
-
-// startRESTTransport starts the REST HTTP transport
+// startRESTTransport starts the REST HTTP+JSON transport
+// The SDK does not provide a built-in REST handler, so we implement a thin
+// adapter that translates REST HTTP requests to SDK RequestHandler calls.
 func (a *AlohaServer) startRESTTransport(ctx context.Context) error {
 	log.Printf("Starting REST transport on %s:%d", a.host, a.restPort)
 
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
+	mux := http.NewServeMux()
 
 	// Agent card endpoint
-	router.GET("/.well-known/agent-card.json", func(c *gin.Context) {
-		c.JSON(http.StatusOK, a.agentCard)
-	})
+	mux.Handle("/.well-known/agent-card.json", a2asrv.NewStaticAgentCardHandler(a.agentCard))
 
-	// Transport capability probe endpoint
-	router.GET("/v1/transports", func(c *gin.Context) {
-		experimentalTransportsEnabled := os.Getenv(experimentalTransportsEnv) == "1"
-		c.JSON(http.StatusOK, gin.H{
-			"rest": gin.H{
-				"implemented": true,
-				"stream":      true,
-			},
-			"jsonrpc": gin.H{
-				"enabled":     experimentalTransportsEnabled,
-				"implemented": experimentalTransportsEnabled,
-				"stream":      false,
-			},
-			"grpc": gin.H{
-				"enabled":     experimentalTransportsEnabled,
-				"implemented": false,
-				"stream":      false,
-			},
-			"experimentalTransports": experimentalTransportsEnabled,
-		})
-	})
-
-	// A2A message endpoints (/v1/message:send and /v1/message:stream)
-	router.POST("/v1/message:action", func(c *gin.Context) {
-		action := strings.TrimPrefix(c.Param("action"), ":")
-		var message protocol.Message
-
-		if err := c.BindJSON(&message); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+	// REST: POST /v1/message:send - non-streaming message send
+	mux.HandleFunc("/v1/message:send", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		a.handleRESTMessageSend(ctx, w, r)
+	})
 
-		if action != "send" && action != "stream" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Unsupported message action"})
+	// REST: POST /v1/message:stream - streaming message send (SSE)
+	mux.HandleFunc("/v1/message:stream", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		a.handleRESTMessageStream(ctx, w, r)
+	})
 
-		if action == "stream" {
-			c.Header("Content-Type", "text/event-stream")
-			c.Header("Cache-Control", "no-cache")
-			c.Header("Connection", "keep-alive")
+	// REST: GET /v1/tasks/{taskId}
+	mux.HandleFunc("/v1/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if r.Method == http.MethodPost && strings.HasSuffix(path, ":cancel") {
+			// POST /v1/tasks/{taskId}:cancel
+			taskID := strings.TrimPrefix(path, "/v1/tasks/")
+			taskID = strings.TrimSuffix(taskID, ":cancel")
+			a.handleRESTCancelTask(ctx, w, taskID)
+			return
 		}
-
-		// Create task and execute
-		taskID := protocol.NewUUID()
-		eventChan := make(chan protocol.Event, 10)
-
-		go func() {
-			defer close(eventChan)
-			if err := a.executor.Execute(ctx, &message, taskID, eventChan); err != nil {
-				log.Printf("Execution error: %v", err)
-			}
-		}()
-
-		// Stream events or return final event
-		var lastEvent *protocol.Event
-		for event := range eventChan {
-			if action == "stream" {
-				eventJSON, _ := json.Marshal(event)
-				c.Writer.Write([]byte("data: "))
-				c.Writer.Write(eventJSON)
-				c.Writer.Write([]byte("\n\n"))
-				c.Writer.Flush()
-			} else {
-				eventCopy := event
-				lastEvent = &eventCopy
-			}
+		if r.Method == http.MethodGet {
+			// GET /v1/tasks/{taskId}
+			taskID := strings.TrimPrefix(path, "/v1/tasks/")
+			a.handleRESTGetTask(ctx, w, taskID)
+			return
 		}
-
-		if action == "send" {
-			if lastEvent == nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "No response"})
-				return
-			}
-			c.JSON(http.StatusOK, lastEvent)
-		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	})
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", a.host, a.restPort),
-		Handler: router,
+		Handler: mux,
 	}
-
-	a.mu.Lock()
-	a.servers = append(a.servers, server)
-	a.mu.Unlock()
 
 	go func() {
 		<-ctx.Done()
@@ -458,6 +266,124 @@ func (a *AlohaServer) startRESTTransport(ctx context.Context) error {
 
 	log.Printf("REST transport listening on %s:%d", a.host, a.restPort)
 	return server.ListenAndServe()
+}
+
+// handleRESTMessageSend handles non-streaming message send via REST
+func (a *AlohaServer) handleRESTMessageSend(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var params a2a.MessageSendParams
+	if err := json.Unmarshal(body, &params); err != nil {
+		// Try to parse as a bare Message (without wrapper)
+		var msg a2a.Message
+		if err2 := json.Unmarshal(body, &msg); err2 != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		params = a2a.MessageSendParams{Message: &msg}
+	}
+
+	result, err := a.requestHandler.OnSendMessage(ctx, &params)
+	if err != nil {
+		log.Printf("REST SendMessage error: %v", err)
+		http.Error(w, fmt.Sprintf("Error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// handleRESTMessageStream handles streaming message send via REST (SSE)
+func (a *AlohaServer) handleRESTMessageStream(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var params a2a.MessageSendParams
+	if err := json.Unmarshal(body, &params); err != nil {
+		var msg a2a.Message
+		if err2 := json.Unmarshal(body, &msg); err2 != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		params = a2a.MessageSendParams{Message: &msg}
+	}
+
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Use the streaming handler from the SDK
+	for event, err := range a.requestHandler.OnSendMessageStream(ctx, &params) {
+		if err != nil {
+			log.Printf("REST stream error: %v", err)
+			errorJSON, _ := json.Marshal(map[string]string{"error": err.Error()})
+			fmt.Fprintf(w, "data: %s\n\n", errorJSON)
+			flusher.Flush()
+			return
+		}
+
+		eventJSON, err := json.Marshal(event)
+		if err != nil {
+			log.Printf("Failed to marshal event: %v", err)
+			continue
+		}
+
+		fmt.Fprintf(w, "data: %s\n\n", eventJSON)
+		flusher.Flush()
+	}
+}
+
+// handleRESTGetTask handles task retrieval via REST
+func (a *AlohaServer) handleRESTGetTask(ctx context.Context, w http.ResponseWriter, taskID string) {
+	if taskID == "" {
+		http.Error(w, "Task ID required", http.StatusBadRequest)
+		return
+	}
+
+	task, err := a.requestHandler.OnGetTask(ctx, &a2a.TaskQueryParams{ID: a2a.TaskID(taskID)})
+	if err != nil {
+		log.Printf("REST GetTask error: %v", err)
+		http.Error(w, fmt.Sprintf("Error: %v", err), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
+// handleRESTCancelTask handles task cancellation via REST
+func (a *AlohaServer) handleRESTCancelTask(ctx context.Context, w http.ResponseWriter, taskID string) {
+	if taskID == "" {
+		http.Error(w, "Task ID required", http.StatusBadRequest)
+		return
+	}
+
+	task, err := a.requestHandler.OnCancelTask(ctx, &a2a.TaskIDParams{ID: a2a.TaskID(taskID)})
+	if err != nil {
+		log.Printf("REST CancelTask error: %v", err)
+		http.Error(w, fmt.Sprintf("Error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
 }
 
 func main() {
@@ -480,7 +406,7 @@ func main() {
 
 	go func() {
 		<-sigChan
-		log.Println("Received interrupt signal, shutting down...")
+		log.Println("Shutdown signal received, stopping Dice Agent...")
 		cancel()
 	}()
 
@@ -489,7 +415,7 @@ func main() {
 		log.Fatalf("Server error: %v", err)
 	}
 
-	log.Println("Aloha Server stopped")
+	log.Println("Dice Agent stopped")
 }
 
 // Helper functions

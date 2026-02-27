@@ -2,7 +2,10 @@ package com.aloha.a2a.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.a2a.A2A;
-import io.a2a.client.*;
+import io.a2a.client.ClientEvent;
+import io.a2a.client.MessageEvent;
+import io.a2a.client.TaskEvent;
+import io.a2a.client.TaskUpdateEvent;
 import io.a2a.client.config.ClientConfig;
 import io.a2a.client.http.A2ACardResolver;
 import io.a2a.client.transport.grpc.GrpcTransport;
@@ -62,7 +65,7 @@ public class AlohaClient {
     private static final String DEFAULT_HOST = "localhost";
     private static final int DEFAULT_GRPC_PORT = 11000;
     private static final int DEFAULT_JSONRPC_PORT = 11001;
-    private static final int DEFAULT_REST_PORT = 11001;
+    private static final int DEFAULT_REST_PORT = 11002;
     private static final int DEFAULT_GRPC_AGENT_CARD_PORT = 11001;
     private static final String DEFAULT_MESSAGE = "Roll a 6-sided dice";
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -73,7 +76,7 @@ public class AlohaClient {
     private final Integer agentCardPort;
     private final List<ManagedChannel> managedChannels = new ArrayList<>();
     private io.a2a.client.Client a2aClient;
-    
+
     /**
      * Creates a new client with default transport (supports all available transports).
      * <p>
@@ -86,24 +89,24 @@ public class AlohaClient {
     public AlohaClient(String serverUrl) {
         this(serverUrl, null, null);
     }
-    
+
     /**
      * Creates a new client with a specific transport type.
      * <p>
      * This constructor allows you to explicitly specify which transport protocol
      * to use when connecting to the agent.
      *
-     * @param serverUrl the server URL to connect to (format depends on transport type)
+     * @param serverUrl     the server URL to connect to (format depends on transport type)
      * @param transportType the transport type to use, or null to support all transports
      */
     public AlohaClient(String serverUrl, TransportType transportType) {
         this(serverUrl, transportType, null);
     }
-    
+
     /**
      * Creates a new client with a specific transport type and agent card port.
      *
-     * @param serverUrl the server URL to connect to
+     * @param serverUrl     the server URL to connect to
      * @param transportType the transport type to use, or null to support all transports
      * @param agentCardPort separate port for the agent card HTTP endpoint (gRPC mode), or null to use serverUrl port
      */
@@ -112,7 +115,7 @@ public class AlohaClient {
         this.transportType = transportType;
         this.agentCardPort = agentCardPort;
     }
-    
+
     /**
      * Initializes the client by fetching the agent card and setting up transports.
      * <p>
@@ -130,18 +133,18 @@ public class AlohaClient {
      *                   or the agent doesn't support the requested transport
      */
     public void initialize() throws Exception {
-        logger.info("Connecting to agent at: {} with transport: {}", 
+        logger.info("Connecting to agent at: {} with transport: {}",
                 serverUrl, transportType != null ? transportType : "all");
-        
+
         // Build the correct URL for fetching the agent card
         // For gRPC, we need to use HTTP URL to fetch the card
         String agentCardUrl = buildAgentCardUrl();
-        
+
         // Fetch the public agent card
         AgentCard publicAgentCard = new A2ACardResolver(agentCardUrl).getAgentCard();
         logger.info("Successfully fetched public agent card:");
         logger.info(objectMapper.writeValueAsString(publicAgentCard));
-        
+
         // Create channel factory for gRPC transport
         Function<String, Channel> channelFactory = agentUrl -> {
             ManagedChannel channel = ManagedChannelBuilder.forTarget(agentUrl)
@@ -150,34 +153,34 @@ public class AlohaClient {
             managedChannels.add(channel);
             return channel;
         };
-        
+
         ClientConfig clientConfig = new ClientConfig.Builder()
                 .setAcceptedOutputModes(List.of("Text"))
                 .build();
-        
+
         // Create the client with configured transports based on transport type
         var clientBuilder = io.a2a.client.Client.builder(publicAgentCard);
-        
+
         if (transportType == null || transportType == TransportType.GRPC) {
             clientBuilder.withTransport(GrpcTransport.class, new GrpcTransportConfig(channelFactory));
             logger.info("Configured gRPC transport");
         }
-        
+
         if (transportType == null || transportType == TransportType.JSONRPC) {
             clientBuilder.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig());
             logger.info("Configured JSON-RPC transport");
         }
-        
+
         if (transportType == null || transportType == TransportType.REST) {
             clientBuilder.withTransport(RestTransport.class, new RestTransportConfig());
             logger.info("Configured REST (HTTP+JSON) transport");
         }
-        
+
         a2aClient = clientBuilder.clientConfig(clientConfig).build();
-        
+
         logger.info("Client initialized successfully");
     }
-    
+
     /**
      * Builds the correct URL for fetching the agent card.
      * <p>
@@ -195,7 +198,7 @@ public class AlohaClient {
         if (serverUrl.startsWith(HTTP) || serverUrl.startsWith("https://")) {
             return serverUrl;
         }
-        
+
         // For gRPC format (host:port), convert to HTTP URL
         if (transportType == TransportType.GRPC) {
             // Parse host:port format
@@ -204,16 +207,16 @@ public class AlohaClient {
                 String host = parts[0];
                 // Use agentCardPort if specified, otherwise fall back to gRPC port
                 String port = agentCardPort != null ? String.valueOf(agentCardPort) : parts[1];
-                logger.info("Converting gRPC URL {} to HTTP URL for agent card fetch (port {})", 
+                logger.info("Converting gRPC URL {} to HTTP URL for agent card fetch (port {})",
                         serverUrl, port);
                 return HTTP + host + ":" + port;
             }
         }
-        
+
         // Fallback: assume it's HTTP
         return HTTP + serverUrl;
     }
-    
+
     /**
      * Sends a message to the agent and waits for the response.
      * <p>
@@ -235,14 +238,14 @@ public class AlohaClient {
      */
     public String sendMessage(String messageText) throws Exception {
         CompletableFuture<String> messageResponse = new CompletableFuture<>();
-        
+
         // Rebuild client with consumers for this message
         String agentCardUrl = buildAgentCardUrl();
         AgentCard publicAgentCard = new A2ACardResolver(agentCardUrl).getAgentCard();
-        
+
         // Create consumers for handling client events
         List<BiConsumer<ClientEvent, AgentCard>> consumers = createConsumers(messageResponse);
-        
+
         // Create error handler for streaming errors
         Consumer<Throwable> streamingErrorHandler = error -> {
             // Ignore expected cleanup errors after successful completion
@@ -251,30 +254,30 @@ public class AlohaClient {
                 logger.debug("Ignoring post-completion streaming error: {}", error.getMessage());
                 return;
             }
-            
+
             // Check for expected connection closure errors
             String errorMsg = error.getMessage();
             if (errorMsg != null && (
                     errorMsg.contains("Stream") && errorMsg.contains("cancelled") ||
-                    errorMsg.contains("selector manager closed") ||
-                    errorMsg.contains("Connection closed"))) {
+                            errorMsg.contains("selector manager closed") ||
+                            errorMsg.contains("Connection closed"))) {
                 logger.debug("Connection closed after response completion: {}", errorMsg);
                 return;
             }
-            
+
             logger.error("Streaming error occurred: {}", error.getMessage(), error);
             messageResponse.completeExceptionally(error);
         };
-        
+
         ClientConfig clientConfig = new ClientConfig.Builder()
                 .setAcceptedOutputModes(List.of("Text"))
                 .build();
-        
+
         // Create the client with configured transports based on transport type
         var clientBuilder = io.a2a.client.Client.builder(publicAgentCard)
                 .addConsumers(consumers)
                 .streamingErrorHandler(streamingErrorHandler);
-        
+
         if (transportType == null || transportType == TransportType.GRPC) {
             Function<String, Channel> channelFactory = agentUrl -> {
                 ManagedChannel channel = ManagedChannelBuilder.forTarget(agentUrl)
@@ -285,24 +288,24 @@ public class AlohaClient {
             };
             clientBuilder.withTransport(GrpcTransport.class, new GrpcTransportConfig(channelFactory));
         }
-        
+
         if (transportType == null || transportType == TransportType.JSONRPC) {
             clientBuilder.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig());
         }
-        
+
         if (transportType == null || transportType == TransportType.REST) {
             clientBuilder.withTransport(RestTransport.class, new RestTransportConfig());
         }
-        
+
         a2aClient = clientBuilder.clientConfig(clientConfig).build();
-        
+
         // Create and send the message
         Message message = A2A.toUserMessage(messageText);
-        
+
         logger.info("Sending message: {}", messageText);
         a2aClient.sendMessage(message);
         logger.info("Message sent successfully. Waiting for response...");
-        
+
         try {
             // Wait for response
             String responseText = messageResponse.get();
@@ -317,7 +320,7 @@ public class AlohaClient {
             throw e;
         }
     }
-    
+
     /**
      * Creates event consumers for handling agent responses.
      * <p>
@@ -334,21 +337,21 @@ public class AlohaClient {
     private List<BiConsumer<ClientEvent, AgentCard>> createConsumers(
             CompletableFuture<String> messageResponse) {
         List<BiConsumer<ClientEvent, AgentCard>> consumers = new ArrayList<>();
-        
+
         consumers.add((event, agentCard) -> {
             if (event instanceof MessageEvent messageEvent) {
                 Message responseMessage = messageEvent.getMessage();
                 String text = extractTextFromParts(responseMessage.getParts());
                 logger.info("Received message: {}", text);
                 messageResponse.complete(text);
-                
+
             } else if (event instanceof TaskUpdateEvent taskUpdateEvent) {
                 UpdateEvent updateEvent = taskUpdateEvent.getUpdateEvent();
-                
+
                 if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent) {
-                    logger.info("Received status-update: {}", 
+                    logger.info("Received status-update: {}",
                             taskStatusUpdateEvent.getStatus().state().asString());
-                    
+
                     if (taskStatusUpdateEvent.isFinal()) {
                         StringBuilder textBuilder = new StringBuilder();
                         List<Artifact> artifacts = taskUpdateEvent.getTask().getArtifacts();
@@ -358,21 +361,21 @@ public class AlohaClient {
                         String text = textBuilder.toString();
                         messageResponse.complete(text);
                     }
-                    
+
                 } else if (updateEvent instanceof TaskArtifactUpdateEvent taskArtifactUpdateEvent) {
                     List<Part<?>> parts = taskArtifactUpdateEvent.getArtifact().parts();
                     String text = extractTextFromParts(parts);
                     logger.info("Received artifact-update: {}", text);
                 }
-                
+
             } else if (event instanceof TaskEvent taskEvent) {
                 logger.info("Received task event: {}", taskEvent.getTask().getId());
             }
         });
-        
+
         return consumers;
     }
-    
+
     /**
      * Extracts text content from message parts.
      * <p>
@@ -393,7 +396,7 @@ public class AlohaClient {
         }
         return textBuilder.toString();
     }
-    
+
     /**
      * Cleans up client resources.
      * <p>
@@ -408,7 +411,7 @@ public class AlohaClient {
      */
     public void close() {
         logger.info("Cleaning up resources...");
-        
+
         // Close the client
         try {
             if (a2aClient instanceof AutoCloseable) {
@@ -417,7 +420,7 @@ public class AlohaClient {
         } catch (Exception e) {
             logger.warn("Error closing client: {}", e.getMessage(), e);
         }
-        
+
         // Shutdown all managed channels
         for (ManagedChannel channel : managedChannels) {
             try {
@@ -437,7 +440,7 @@ public class AlohaClient {
                 logger.warn("Error shutting down channel: {}", e.getMessage(), e);
             }
         }
-        
+
         logger.info("Resource cleanup completed");
     }
 
@@ -476,14 +479,25 @@ public class AlohaClient {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--host":
-                    if (i + 1 < args.length) { host = args[++i]; }
-                    else { logger.error("Error: --host requires a value"); printUsageAndExit(); }
+                    if (i + 1 < args.length) {
+                        host = args[++i];
+                    } else {
+                        logger.error("Error: --host requires a value");
+                        printUsageAndExit();
+                    }
                     break;
                 case "--port":
                     if (i + 1 < args.length) {
-                        try { port = Integer.parseInt(args[++i]); }
-                        catch (NumberFormatException e) { logger.error("Error: --port must be a number"); printUsageAndExit(); }
-                    } else { logger.error("Error: --port requires a value"); printUsageAndExit(); }
+                        try {
+                            port = Integer.parseInt(args[++i]);
+                        } catch (NumberFormatException e) {
+                            logger.error("Error: --port must be a number");
+                            printUsageAndExit();
+                        }
+                    } else {
+                        logger.error("Error: --port requires a value");
+                        printUsageAndExit();
+                    }
                     break;
                 case "--transport":
                     if (i + 1 < args.length) {
@@ -492,17 +506,29 @@ public class AlohaClient {
                             logger.error("Error: --transport must be one of: jsonrpc, grpc, rest");
                             printUsageAndExit();
                         }
-                    } else { logger.error("Error: --transport requires a value"); printUsageAndExit(); }
+                    } else {
+                        logger.error("Error: --transport requires a value");
+                        printUsageAndExit();
+                    }
                     break;
                 case "--agent-card-port":
-                    if (i + 1 < args.length) { agentCardPort = Integer.parseInt(args[++i]); }
-                    else { logger.error("Error: --agent-card-port requires a value"); printUsageAndExit(); }
+                    if (i + 1 < args.length) {
+                        agentCardPort = Integer.parseInt(args[++i]);
+                    } else {
+                        logger.error("Error: --agent-card-port requires a value");
+                        printUsageAndExit();
+                    }
                     break;
                 case "--message":
-                    if (i + 1 < args.length) { message = args[++i]; }
-                    else { logger.error("Error: --message requires a value"); printUsageAndExit(); }
+                    if (i + 1 < args.length) {
+                        message = args[++i];
+                    } else {
+                        logger.error("Error: --message requires a value");
+                        printUsageAndExit();
+                    }
                     break;
-                case "--help": case "-h":
+                case "--help":
+                case "-h":
                     printUsageAndExit();
                     break;
                 default:
@@ -567,7 +593,7 @@ public class AlohaClient {
         System.out.println();
         System.out.println("Options:");
         System.out.println("  --host <hostname>           Agent hostname (default: localhost)");
-        System.out.println("  --port <port>               Agent port (default: 11000 for gRPC, 11001 for JSON-RPC/REST)");
+        System.out.println("  --port <port>               Agent port (default: 11000 for gRPC, 11001 for JSON-RPC, 11002 for REST)");
         System.out.println("  --transport <protocol>      Transport protocol: jsonrpc, grpc, or rest (default: grpc)");
         System.out.println("  --agent-card-port <port>    Port for agent card (gRPC mode, default: 11001)");
         System.out.println("  --message <text>            Message to send (default: \"Roll a 6-sided dice\")");
@@ -576,7 +602,7 @@ public class AlohaClient {
         System.out.println("Examples:");
         System.out.println("  java -jar client.jar --message \"Roll a 20-sided dice\"");
         System.out.println("  java -jar client.jar --transport jsonrpc --port 11001 --message \"Is 17 prime?\"");
-        System.out.println("  java -jar client.jar --transport rest --port 11001 --message \"Check if 2, 7, 11 are prime\"");
+        System.out.println("  java -jar client.jar --transport rest --port 11002 --message \"Check if 2, 7, 11 are prime\"");
         System.out.println();
         System.exit(0);
     }

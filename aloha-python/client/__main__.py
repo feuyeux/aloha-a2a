@@ -115,12 +115,6 @@ async def run_client(server_url: str, transport: str, message: str, probe: bool)
     client = AlohaClient(server_url, transport)
     
     try:
-        if transport != 'rest':
-            raise RuntimeError(
-                f"Transport '{transport}' is not fully supported by this host implementation. "
-                "Please use --transport rest."
-            )
-
         await client.initialize()
 
         if probe:

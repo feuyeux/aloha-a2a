@@ -121,12 +121,12 @@ public class JsonRpcTransportServer {
      * Handles HTTP POST with JSON-RPC 2.0 payloads and GET for agent card.
      * <p>
      * For non-streaming methods (message/send, tasks/get, tasks/cancel):
-     *   Request:  POST with Content-Type: application/json, JSON-RPC 2.0 body
-     *   Response: Content-Type: application/json, JSON-RPC 2.0 response
+     * Request:  POST with Content-Type: application/json, JSON-RPC 2.0 body
+     * Response: Content-Type: application/json, JSON-RPC 2.0 response
      * <p>
      * For streaming method (message/stream):
-     *   Request:  POST with Content-Type: application/json, JSON-RPC 2.0 body
-     *   Response: Content-Type: text/event-stream, SSE with JSON-RPC 2.0 events
+     * Request:  POST with Content-Type: application/json, JSON-RPC 2.0 body
+     * Response: Content-Type: text/event-stream, SSE with JSON-RPC 2.0 events
      */
     private static class JsonRpcHttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -224,7 +224,7 @@ public class JsonRpcTransportServer {
          * Each event line: data: {JSON-RPC 2.0 response object}\n\n
          */
         private void handleSseStream(ChannelHandlerContext ctx,
-                                      Flow.Publisher<SendStreamingMessageResponse> publisher) {
+                                     Flow.Publisher<SendStreamingMessageResponse> publisher) {
             // Send SSE response headers with chunked transfer encoding
             DefaultHttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/event-stream");

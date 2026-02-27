@@ -1,6 +1,4 @@
-using Aloha.A2A.Client;
-
-const string ExperimentalTransportsEnv = "A2A_EXPERIMENTAL_TRANSPORTS";
+using A2A;
 
 var options = ParseArgs(args);
 
@@ -10,75 +8,68 @@ if (options.ShowHelp)
     return;
 }
 
-if (!options.Probe && string.IsNullOrWhiteSpace(options.Message))
+if (string.IsNullOrWhiteSpace(options.Message))
 {
-    Console.WriteLine("--message is required unless --probe is set.");
+    Console.WriteLine("--message is required.");
+    PrintUsage();
     Environment.Exit(1);
     return;
 }
 
-var transport = options.Transport.ToLowerInvariant();
-var port = options.Port ?? transport switch
-{
-    "grpc" => 15000,
-    "jsonrpc" => 15002,
-    _ => 15002
-};
+var port = options.Port ?? 15001; // Default to JSON-RPC port
 
 Console.WriteLine("=".PadRight(60, '='));
-Console.WriteLine("A2A Host Client");
-Console.WriteLine($"Transport: {transport}");
-Console.WriteLine($"Agent: {options.Host}:{port}");
-Console.WriteLine($"Message: {options.Message}");
-Console.WriteLine($"Streaming: {options.Stream}");
-Console.WriteLine($"Probe: {options.Probe}");
-if (!string.IsNullOrEmpty(options.ContextId))
-{
-    Console.WriteLine($"Context ID: {options.ContextId}");
-}
+Console.WriteLine("A2A Host Client (SDK)");
+Console.WriteLine($"  Transport: JSON-RPC (via A2A SDK)");
+Console.WriteLine($"  Agent: {options.Host}:{port}");
+Console.WriteLine($"  Message: {options.Message}");
+Console.WriteLine($"  Streaming: {options.Stream}");
 Console.WriteLine("=".PadRight(60, '='));
 Console.WriteLine();
 
-var experimentalTransportsEnabled =
-    string.Equals(Environment.GetEnvironmentVariable(ExperimentalTransportsEnv), "1", StringComparison.Ordinal);
-
-if (transport != "rest" && !experimentalTransportsEnabled)
-{
-    Console.WriteLine($"Transport '{transport}' requires experimental mode.");
-    Console.WriteLine($"Set {ExperimentalTransportsEnv}=1 to enable JSON-RPC/gRPC POC, or use --transport rest.");
-    Environment.Exit(1);
-    return;
-}
-
 try
 {
-    switch (transport)
+    var baseUrl = new Uri($"http://{options.Host}:{port}");
+
+    // Resolve agent card
+    Console.WriteLine("Resolving agent card...");
+    var cardResolver = new A2ACardResolver(baseUrl);
+    var card = await cardResolver.GetAgentCardAsync();
+    Console.WriteLine($"Agent: {card.Name} v{card.Version}");
+    Console.WriteLine($"Description: {card.Description}");
+    if (card.Skills != null)
     {
-        case "rest":
-            if (options.Probe)
-            {
-                await HandleProbe(options.Host, port);
-                break;
-            }
+        Console.WriteLine($"Skills: {card.Skills.Count}");
+        foreach (var skill in card.Skills)
+        {
+            Console.WriteLine($"  - {skill.Name}: {skill.Description}");
+        }
+    }
+    Console.WriteLine();
 
-            await HandleRestTransport(options.Host, port, options.Message ?? string.Empty, options.Stream, options.ContextId);
-            break;
+    // Create A2A client (uses JSON-RPC internally)
+    var client = new A2AClient(new Uri(card.Url));
 
-        case "jsonrpc":
-            await HandleJsonRpcTransport(options.Host, port, options.Message ?? string.Empty, options.Stream, options.ContextId);
-            break;
+    // Build message
+    var agentMessage = new AgentMessage
+    {
+        Role = MessageRole.User,
+        Parts = [new TextPart { Text = options.Message }],
+        MessageId = Guid.NewGuid().ToString()
+    };
 
-        case "grpc":
-            Console.WriteLine("gRPC transport is in experimental mode but not yet implemented in this host.");
-            Console.WriteLine("Use --transport rest for production usage.");
-            Environment.Exit(1);
-            break;
+    var sendParams = new MessageSendParams
+    {
+        Message = agentMessage
+    };
 
-        default:
-            Console.WriteLine($"Unknown transport: {transport}");
-            Console.WriteLine("Supported transports: rest, grpc, jsonrpc");
-            Environment.Exit(1);
-            break;
+    if (options.Stream)
+    {
+        await HandleStreaming(client, sendParams);
+    }
+    else
+    {
+        await HandleNonStreaming(client, sendParams);
     }
 }
 catch (Exception ex)
@@ -87,186 +78,147 @@ catch (Exception ex)
     Environment.Exit(1);
 }
 
-static async Task HandleRestTransport(string host, int port, string message, bool stream, string? contextId)
+static async Task HandleNonStreaming(A2AClient client, MessageSendParams sendParams)
 {
-    var client = new RestClient(host, port);
+    Console.WriteLine("Sending message (non-streaming)...");
+    Console.WriteLine();
 
-    // First, try to get agent card
-    try
+    var response = await client.SendMessageAsync(sendParams);
+
+    Console.WriteLine("=".PadRight(60, '='));
+    Console.WriteLine("Agent Response:");
+    Console.WriteLine("=".PadRight(60, '='));
+
+    switch (response)
     {
-        Console.WriteLine("Fetching agent card...");
-        var agentCard = await client.GetAgentCardAsync();
-        if (agentCard != null)
-        {
-            Console.WriteLine($"Agent: {agentCard.Name} v{agentCard.Version}");
-            Console.WriteLine($"Description: {agentCard.Description}");
-            Console.WriteLine();
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Warning: Could not fetch agent card: {ex.Message}");
-        Console.WriteLine();
-    }
-
-    if (stream)
-    {
-        Console.WriteLine("Sending message with streaming...");
-        Console.WriteLine();
-
-        await client.SendMessageStreamAsync(message, (eventObj) =>
-        {
-            if (eventObj is A2ATask task)
-            {
-                Console.WriteLine($"[Task] ID: {task.Id}, State: {task.Status.State}");
-            }
-            else if (eventObj is TaskStatusUpdate statusUpdate)
-            {
-                Console.WriteLine($"[Status Update] State: {statusUpdate.Status.State}");
-                if (statusUpdate.Status.Message?.Parts != null)
-                {
-                    foreach (var part in statusUpdate.Status.Message.Parts)
-                    {
-                        if (part.Kind == "text" && !string.IsNullOrEmpty(part.Text))
-                        {
-                            Console.WriteLine($"  {part.Text}");
-                        }
-                    }
-                }
-
-                if (statusUpdate.Final)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("Task completed.");
-                }
-            }
-        }, contextId);
-    }
-    else
-    {
-        Console.WriteLine("Sending message...");
-        var task = await client.SendMessageAsync(message, contextId);
-
-        if (task != null)
-        {
-            Console.WriteLine();
+        case AgentTask task:
             Console.WriteLine($"Task ID: {task.Id}");
-            Console.WriteLine($"Context ID: {task.ContextId}");
-            Console.WriteLine($"Status: {task.Status.State}");
-            Console.WriteLine();
-
-            // Poll for completion
-            var maxAttempts = 30;
-            var attempt = 0;
-
-            while (attempt < maxAttempts && task.Status.State != "completed" && task.Status.State != "failed" && task.Status.State != "canceled")
+            Console.WriteLine($"State: {task.Status.State}");
+            if (task.Status.Message != null)
             {
-                await Task.Delay(1000);
-                task = await client.GetTaskAsync(task.Id);
-                Console.WriteLine($"Status: {task?.Status.State}");
-                attempt++;
+                PrintMessageParts(task.Status.Message);
             }
-
-            if (task != null && task.Status.State == "completed")
+            if (task.Artifacts != null)
             {
-                Console.WriteLine();
-                Console.WriteLine("Response:");
-                if (task.Status.Message?.Parts != null)
+                foreach (var artifact in task.Artifacts)
                 {
-                    foreach (var part in task.Status.Message.Parts)
-                    {
-                        if (part.Kind == "text" && !string.IsNullOrEmpty(part.Text))
-                        {
-                            Console.WriteLine(part.Text);
-                        }
-                    }
+                    Console.WriteLine("--- Artifact ---");
+                    PrintParts(artifact.Parts);
                 }
             }
-            else if (task != null)
-            {
-                Console.WriteLine();
-                Console.WriteLine($"Task ended with status: {task.Status.State}");
-            }
-        }
-    }
-
-    Console.WriteLine();
-    Console.WriteLine("Done.");
-}
-
-static async Task HandleProbe(string host, int port)
-{
-    var client = new RestClient(host, port);
-    var transportJson = await client.GetTransportCapabilitiesAsync();
-
-    Console.WriteLine();
-    Console.WriteLine("=".PadRight(60, '='));
-    Console.WriteLine("Transport Capabilities");
-    Console.WriteLine("=".PadRight(60, '='));
-    Console.WriteLine(transportJson);
-    Console.WriteLine("=".PadRight(60, '='));
-}
-
-static async Task HandleJsonRpcTransport(string host, int port, string message, bool stream, string? contextId)
-{
-    if (stream)
-    {
-        Console.WriteLine("JSON-RPC stream is not implemented yet in C# experimental transport.");
-        Environment.Exit(1);
-        return;
-    }
-
-    var client = new JsonRpcClient(host, port);
-
-    Console.WriteLine("Sending message via JSON-RPC experimental transport...");
-    var task = await client.SendMessageAsync(message, contextId);
-
-    if (task == null)
-    {
-        Console.WriteLine("No task returned from JSON-RPC response.");
-        Environment.Exit(1);
-        return;
-    }
-
-    Console.WriteLine();
-    Console.WriteLine($"Task ID: {task.Id}");
-    Console.WriteLine($"Context ID: {task.ContextId}");
-    Console.WriteLine($"Status: {task.Status.State}");
-    Console.WriteLine();
-
-    var restClient = new RestClient(host, port);
-    var maxAttempts = 30;
-    var attempt = 0;
-    while (attempt < maxAttempts && task.Status.State != "completed" && task.Status.State != "failed" && task.Status.State != "canceled")
-    {
-        await Task.Delay(1000);
-        var latestTask = await restClient.GetTaskAsync(task.Id);
-        if (latestTask == null)
-        {
             break;
-        }
 
-        task = latestTask;
-        Console.WriteLine($"Status: {task.Status.State}");
-        attempt++;
+        case AgentMessage msg:
+            PrintMessageParts(msg);
+            break;
+
+        default:
+            Console.WriteLine($"Unknown response type: {response?.GetType().Name}");
+            break;
     }
 
-    Console.WriteLine();
-
-    if (task.Status.Message?.Parts != null)
-    {
-        Console.WriteLine("Response:");
-        foreach (var part in task.Status.Message.Parts)
-        {
-            if (part.Kind == "text" && !string.IsNullOrWhiteSpace(part.Text))
-            {
-                Console.WriteLine(part.Text);
-            }
-        }
-    }
-
-    Console.WriteLine();
+    Console.WriteLine("=".PadRight(60, '='));
     Console.WriteLine("Done.");
+}
+
+static async Task HandleStreaming(A2AClient client, MessageSendParams sendParams)
+{
+    Console.WriteLine("Sending message (streaming)...");
+    Console.WriteLine();
+
+    Console.WriteLine("=".PadRight(60, '='));
+    Console.WriteLine("Agent Response (Streaming):");
+    Console.WriteLine("=".PadRight(60, '='));
+
+    await foreach (var sseItem in client.SendMessageStreamingAsync(sendParams))
+    {
+        var evt = sseItem.Data;
+        if (evt == null) continue;
+
+        switch (evt)
+        {
+            case TaskStatusUpdateEvent statusUpdate:
+                Console.Write($"[Status] State: {statusUpdate.Status.State}");
+                if (statusUpdate.Status.Message != null)
+                {
+                    Console.Write(" | ");
+                    PrintMessagePartsInline(statusUpdate.Status.Message);
+                }
+                Console.WriteLine();
+                if (statusUpdate.Final == true)
+                {
+                    Console.WriteLine("[Final event]");
+                }
+                break;
+
+            case TaskArtifactUpdateEvent artifactUpdate:
+                Console.Write("[Artifact] ");
+                PrintParts(artifactUpdate.Artifact.Parts);
+                break;
+
+            case AgentMessage msg:
+                Console.Write("[Message] ");
+                PrintMessageParts(msg);
+                break;
+
+            case AgentTask task:
+                Console.WriteLine($"[Task] ID: {task.Id}, State: {task.Status.State}");
+                break;
+
+            default:
+                Console.WriteLine($"[Event] {evt.GetType().Name}");
+                break;
+        }
+    }
+
+    Console.WriteLine("=".PadRight(60, '='));
+    Console.WriteLine("Done.");
+}
+
+static void PrintMessageParts(AgentMessage msg)
+{
+    if (msg.Parts == null) return;
+    PrintParts(msg.Parts);
+}
+
+static void PrintMessagePartsInline(AgentMessage msg)
+{
+    if (msg.Parts == null) return;
+    foreach (var part in msg.Parts)
+    {
+        if (part is TextPart textPart)
+        {
+            Console.Write(textPart.Text);
+        }
+        else
+        {
+            Console.Write($"[{part.GetType().Name}]");
+        }
+    }
+}
+
+static void PrintParts(List<Part>? parts)
+{
+    if (parts == null) return;
+    foreach (var part in parts)
+    {
+        if (part is TextPart textPart)
+        {
+            Console.WriteLine(textPart.Text);
+        }
+        else if (part is FilePart)
+        {
+            Console.WriteLine("[File part]");
+        }
+        else if (part is DataPart)
+        {
+            Console.WriteLine("[Data part]");
+        }
+        else
+        {
+            Console.WriteLine($"[Unknown part type: {part.GetType().Name}]");
+        }
+    }
 }
 
 static HostCliOptions ParseArgs(string[] args)
@@ -290,38 +242,22 @@ static HostCliOptions ParseArgs(string[] args)
 
         switch (arg)
         {
-            case "--transport":
-            case "-t":
-                options.Transport = NextValue(args, ref index) ?? options.Transport;
-                break;
             case "--host":
             case "-h":
                 options.Host = NextValue(args, ref index) ?? options.Host;
                 break;
             case "--port":
             case "-p":
-                {
-                    var rawPort = NextValue(args, ref index);
-                    if (int.TryParse(rawPort, out var parsedPort))
-                    {
-                        options.Port = parsedPort;
-                    }
-                }
+                if (int.TryParse(NextValue(args, ref index), out var parsedPort))
+                    options.Port = parsedPort;
                 break;
             case "--message":
             case "-m":
                 options.Message = NextValue(args, ref index);
                 break;
-            case "--context":
-            case "-c":
-                options.ContextId = NextValue(args, ref index);
-                break;
             case "--stream":
             case "-s":
                 options.Stream = true;
-                break;
-            case "--probe":
-                options.Probe = true;
                 break;
             case "--help":
             case "-?":
@@ -335,26 +271,26 @@ static HostCliOptions ParseArgs(string[] args)
 
 static void PrintUsage()
 {
-    Console.WriteLine("Usage: host --transport <jsonrpc|grpc|rest> --host <hostname> --port <port> --message <text> [--stream] [--probe]");
+    Console.WriteLine("Usage: client --message <text> [--host <hostname>] [--port <port>] [--stream]");
     Console.WriteLine();
     Console.WriteLine("Options:");
-    Console.WriteLine("  --transport, -t  Transport protocol (default: rest)");
     Console.WriteLine("  --host, -h       Agent hostname (default: localhost)");
-    Console.WriteLine("  --port, -p       Agent port (default: 15002 for REST/JSON-RPC, 15000 for gRPC)");
-    Console.WriteLine("  --message, -m    Message to send");
+    Console.WriteLine("  --port, -p       Agent port (default: 15001 for JSON-RPC)");
+    Console.WriteLine("  --message, -m    Message to send [required]");
     Console.WriteLine("  --stream, -s     Use streaming mode");
-    Console.WriteLine("  --probe          Probe transport capabilities and exit (REST)");
-    Console.WriteLine("  --context, -c    Context ID for conversation continuity");
+    Console.WriteLine();
+    Console.WriteLine("The client uses the A2A SDK with JSON-RPC transport.");
+    Console.WriteLine();
+    Console.WriteLine("Examples:");
+    Console.WriteLine("  client --message \"Roll a 20-sided dice\"");
+    Console.WriteLine("  client --port 15001 --message \"Is 17 prime?\" --stream");
 }
 
 sealed class HostCliOptions
 {
-    public string Transport { get; set; } = "rest";
     public string Host { get; set; } = "localhost";
     public int? Port { get; set; }
     public string? Message { get; set; }
     public bool Stream { get; set; }
-    public bool Probe { get; set; }
-    public string? ContextId { get; set; }
     public bool ShowHelp { get; set; }
 }

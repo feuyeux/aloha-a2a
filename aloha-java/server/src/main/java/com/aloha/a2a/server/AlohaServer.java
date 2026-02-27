@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  *   <li>{@code jsonrpc} – Netty HTTP (JSON-RPC 2.0 over HTTP) on {@code http.port}</li>
  *   <li>{@code rest}    – Netty HTTP on {@code http.port}</li>
  * </ul>
- *
+ * <p>
  * Override any property with {@code -Dkey=value} system properties.
  */
 public class AlohaServer {
@@ -28,7 +28,9 @@ public class AlohaServer {
     private static final Logger logger = LoggerFactory.getLogger(AlohaServer.class);
 
     public static void main(String[] args) {
+        logger.info("============================================================");
         logger.info("=== Dice Agent starting ===");
+        logger.info("============================================================");
 
         // Start parent-process watchdog so that if the Maven (exec:exec) parent
         // is killed, this forked JVM shuts down automatically instead of
@@ -48,6 +50,8 @@ public class AlohaServer {
         DiceAgentExecutor diceExecutor = new DiceAgentExecutor(agent);
         AgentExecutor agentExecutor = diceExecutor.getExecutor();
         AgentCardProvider cardProvider = new AgentCardProvider(config);
+
+        logger.info("Dice Agent initialized");
 
         // 3. Start transport
         try {
@@ -72,16 +76,22 @@ public class AlohaServer {
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutdown hook triggered");
+            logger.info("Shutdown signal received, stopping Dice Agent...");
             server.stop();
+            logger.info("Dice Agent stopped");
         }, "shutdown-hook"));
 
-        logger.info("=== Dice Agent ready (gRPC port={}, HTTP port={}) ===", config.getGrpcPort(), config.getHttpPort());
+        logger.info("============================================================");
+        logger.info("Dice Agent is running with the following transports:");
+        logger.info("  - gRPC:         http://localhost:{}", config.getGrpcPort());
+        logger.info("  - HTTP:         http://localhost:{}", config.getHttpPort());
+        logger.info("  - Agent Card:   http://localhost:{}/.well-known/agent-card.json", config.getHttpPort());
+        logger.info("============================================================");
         server.awaitTermination();
 
         // awaitTermination returned — channel was closed. Clean up and force exit
         // in case orphaned non-daemon threads (SDK, gRPC internal) survive.
-        logger.info("Server channel closed, shutting down...");
+        logger.info("Dice Agent stopped");
         server.stop();
         System.exit(0);
     }
@@ -92,32 +102,42 @@ public class AlohaServer {
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutdown hook triggered");
+            logger.info("Shutdown signal received, stopping Dice Agent...");
             server.stop();
+            logger.info("Dice Agent stopped");
         }, "shutdown-hook"));
 
-        logger.info("=== Dice Agent ready (JSON-RPC HTTP port={}) ===", config.getHttpPort());
+        logger.info("============================================================");
+        logger.info("Dice Agent is running with the following transports:");
+        logger.info("  - JSON-RPC:     http://localhost:{}", config.getHttpPort());
+        logger.info("  - Agent Card:   http://localhost:{}/.well-known/agent-card.json", config.getHttpPort());
+        logger.info("============================================================");
         server.awaitTermination();
 
-        logger.info("Server channel closed, shutting down...");
+        logger.info("Dice Agent stopped");
         server.stop();
         System.exit(0);
     }
 
     private static void startRest(AppConfig config, AgentCardProvider cardProvider, AgentExecutor agentExecutor) throws Exception {
         RestTransportServer server = new RestTransportServer(
-                config.getHttpPort(), cardProvider, agentExecutor);
+                config.getRestPort(), cardProvider, agentExecutor);
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutdown hook triggered");
+            logger.info("Shutdown signal received, stopping Dice Agent...");
             server.stop();
+            logger.info("Dice Agent stopped");
         }, "shutdown-hook"));
 
-        logger.info("=== Dice Agent ready (REST HTTP port={}) ===", config.getHttpPort());
+        logger.info("============================================================");
+        logger.info("Dice Agent is running with the following transports:");
+        logger.info("  - REST:         http://localhost:{}", config.getRestPort());
+        logger.info("  - Agent Card:   http://localhost:{}/.well-known/agent-card.json", config.getRestPort());
+        logger.info("============================================================");
         server.awaitTermination();
 
-        logger.info("Server channel closed, shutting down...");
+        logger.info("Dice Agent stopped");
         server.stop();
         System.exit(0);
     }
@@ -162,8 +182,7 @@ public class AlohaServer {
             while (true) {
                 for (ProcessHandle ancestor : ancestors) {
                     if (!ancestor.isAlive()) {
-                        logger.info("Ancestor process (PID {}) terminated, shutting down...",
-                                ancestor.pid());
+                        logger.info("Shutdown signal received, stopping Dice Agent...");
                         System.exit(0);
                     }
                 }

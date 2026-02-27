@@ -11,7 +11,6 @@ import io.a2a.server.tasks.InMemoryTaskStore;
 import io.a2a.spec.AgentCard;
 import io.a2a.transport.grpc.handler.CallContextFactory;
 import io.a2a.transport.grpc.handler.GrpcHandler;
-import io.grpc.Metadata;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;

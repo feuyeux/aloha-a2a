@@ -2,7 +2,8 @@
 
 # Aloha A2A - Java Implementation
 
-A pure Java implementation of the A2A (Agent-to-Agent) protocol with support for three transport modes: gRPC, JSON-RPC, and REST (HTTP+JSON).
+A pure Java implementation of the A2A (Agent-to-Agent) protocol with support for three transport modes: gRPC, JSON-RPC,
+and REST (HTTP+JSON).
 
 ## Features
 
@@ -14,13 +15,14 @@ A pure Java implementation of the A2A (Agent-to-Agent) protocol with support for
 
 ## Port Configuration
 
-| Transport Mode    | Server Port | Agent Card URL                                       |
-|:------------------|:------------|:-----------------------------------------------------|
-| gRPC              | 11000       | `http://localhost:11001/.well-known/agent-card.json`  |
-| JSON-RPC          | 11001       | `http://localhost:11001/.well-known/agent-card.json`  |
-| REST (HTTP+JSON)  | 11001       | `http://localhost:11001/.well-known/agent-card.json`  |
+| Transport Mode   | Server Port | Agent Card URL                                       |
+|:-----------------|:------------|:-----------------------------------------------------|
+| gRPC             | 11000       | `http://localhost:11001/.well-known/agent-card.json` |
+| JSON-RPC         | 11001       | `http://localhost:11001/.well-known/agent-card.json` |
+| REST (HTTP+JSON) | 11002       | `http://localhost:11002/.well-known/agent-card.json` |
 
-> In gRPC mode, the gRPC service runs on port 11000 while the Agent Card HTTP endpoint runs on `http.port` (default 11001).
+> In gRPC mode, the gRPC service runs on port 11000 while the Agent Card HTTP endpoint runs on `http.port` (default
+> 11001).
 
 ## Prerequisites
 
@@ -93,15 +95,15 @@ cd server ; mvn exec:exec "-Dtransport.mode=rest"
 
 **Endpoints**:
 
-- REST (HTTP+JSON): `http://localhost:11001`
-- Agent Card: `http://localhost:11001/.well-known/agent-card.json`
+- REST (HTTP+JSON): `http://localhost:11002`
+- Agent Card: `http://localhost:11002/.well-known/agent-card.json`
 
 ### Client
 
 ```bash
-cd client && mvn exec:exec -Dexec.args="--transport rest --port 11001 --message 'Check if 13 is prime'"
+cd client && mvn exec:exec -Dexec.args="--transport rest --port 11002 --message 'Check if 13 is prime'"
 # PowerShell
-cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11001 --message 'Check if 13 is prime'"""
+cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11002 --message 'Check if 13 is prime'"""
 ```
 
 ## Configuration
@@ -109,25 +111,26 @@ cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11001 --
 All settings are in `server/src/main/resources/application.properties`.
 Override any property with `-Dkey=value` system properties.
 
-| Property               | Default                      | Description                              |
-|:-----------------------|:-----------------------------|:-----------------------------------------|
-| `transport.mode`       | `grpc`                       | Transport: `grpc`, `jsonrpc`, or `rest`  |
-| `grpc.server.port`     | `11000`                      | gRPC server port                         |
-| `http.port`            | `11001`                      | HTTP port (agent card / JSON-RPC / REST) |
-| `ollama.base-url`      | `http://localhost:11434`     | Ollama API base URL                      |
-| `ollama.model`         | `qwen2.5`                    | Ollama model name                        |
-| `ollama.temperature`   | `0.7`                        | LLM temperature                          |
-| `ollama.timeout`       | `60`                         | Ollama timeout (seconds)                 |
+| Property             | Default                  | Description                             |
+|:---------------------|:-------------------------|:----------------------------------------|
+| `transport.mode`     | `grpc`                   | Transport: `grpc`, `jsonrpc`, or `rest` |
+| `grpc.server.port`   | `11000`                  | gRPC server port                        |
+| `http.port`          | `11001`                  | HTTP port (agent card / JSON-RPC)       |
+| `rest.port`          | `11002`                  | REST server port                        |
+| `ollama.base-url`    | `http://localhost:11434` | Ollama API base URL                     |
+| `ollama.model`       | `qwen2.5`                | Ollama model name                       |
+| `ollama.temperature` | `0.7`                    | LLM temperature                         |
+| `ollama.timeout`     | `60`                     | Ollama timeout (seconds)                |
 
 ## Agent Tools
 
 1. **roll_dice(N)**: Rolls an N-sided dice
-   - Example: "Roll a 20-sided dice"
-   - Example (Chinese): "投掷一个6面骰子"
+    - Example: "Roll a 20-sided dice"
+    - Example (Chinese): "投掷一个6面骰子"
 
 2. **check_prime(nums)**: Checks if numbers are prime
-   - Example: "Check if 2, 4, 7, 9, 11 are prime"
-   - Example (Chinese): "检查17是否为质数"
+    - Example: "Check if 2, 4, 7, 9, 11 are prime"
+    - Example (Chinese): "检查17是否为质数"
 
 ## References
 

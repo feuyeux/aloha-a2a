@@ -61,15 +61,16 @@ public class AgentCardProvider {
 
         String mode = config.getTransportMode();
         String httpUrl = "http://localhost:" + config.getHttpPort() + "/";
+        String restUrl = "http://localhost:" + config.getRestPort() + "/";
         String grpcUrl = "localhost:" + config.getGrpcPort();
 
         // Always declare all three transports — the SDK validates that the AgentCard
         // lists every transport that has been registered on the server side.
-        // gRPC uses its own port; JSON-RPC and REST share the http port.
+        // gRPC uses its own port; JSON-RPC uses http port; REST uses rest port.
         List<AgentInterface> allInterfaces = List.of(
                 new AgentInterface(TransportProtocol.GRPC.asString(), grpcUrl),
                 new AgentInterface(TransportProtocol.JSONRPC.asString(), httpUrl),
-                new AgentInterface(TransportProtocol.HTTP_JSON.asString(), httpUrl));
+                new AgentInterface(TransportProtocol.HTTP_JSON.asString(), restUrl));
 
         switch (mode) {
             case "grpc":
@@ -87,10 +88,10 @@ public class AgentCardProvider {
                 break;
 
             case "rest":
-                cardBuilder.url(httpUrl)
+                cardBuilder.url(restUrl)
                         .preferredTransport(TransportProtocol.HTTP_JSON.asString())
                         .additionalInterfaces(allInterfaces);
-                logger.info("Produced REST (HTTP+JSON) agent card: httpPort={}", config.getHttpPort());
+                logger.info("Produced REST (HTTP+JSON) agent card: restPort={}", config.getRestPort());
                 break;
 
             default:

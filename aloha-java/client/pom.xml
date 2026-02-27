@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -79,7 +80,8 @@
                 <version>3.6.3</version>
                 <configuration>
                     <executable>java</executable>
-                    <commandlineArgs>-classpath %classpath com.aloha.a2a.client.AlohaClient ${exec.args}</commandlineArgs>
+                    <commandlineArgs>-classpath %classpath com.aloha.a2a.client.AlohaClient ${exec.args}
+                    </commandlineArgs>
                 </configuration>
             </plugin>
         </plugins>

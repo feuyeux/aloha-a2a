@@ -126,9 +126,13 @@ public class RestTransportServer {
 
         private static final Logger logger = LoggerFactory.getLogger(RestHttpHandler.class);
 
-        /** Matches /v1/tasks/{taskId} with optional query string */
+        /**
+         * Matches /v1/tasks/{taskId} with optional query string
+         */
         private static final Pattern TASKS_GET_PATTERN = Pattern.compile("^/v1/tasks/([^/?]+)(\\?.*)?$");
-        /** Matches /v1/tasks/{taskId}:cancel */
+        /**
+         * Matches /v1/tasks/{taskId}:cancel
+         */
         private static final Pattern TASKS_CANCEL_PATTERN = Pattern.compile("^/v1/tasks/([^/?]+):cancel$");
 
         private final RestHandler restHandler;

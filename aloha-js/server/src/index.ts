@@ -17,14 +17,15 @@ async function main() {
     const jsonrpcPort = parseInt(process.env.JSONRPC_PORT || '14001', 10);
     const restPort = parseInt(process.env.REST_PORT || '14002', 10);
     const host = process.env.HOST || '0.0.0.0';
+    const transportMode = (process.env.TRANSPORT_MODE || 'rest').toLowerCase();
+
+    console.log(`Transport mode: ${transportMode}`);
 
     // Create and start server
-    const server = new AlohaServer(grpcPort, jsonrpcPort, restPort, host);
+    const server = new AlohaServer(grpcPort, jsonrpcPort, restPort, host, transportMode);
 
     try {
         await server.start();
-
-        console.log('Server started successfully. Press Ctrl+C to stop.');
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
@@ -33,12 +34,14 @@ async function main() {
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-    console.log('\nReceived interrupt signal, shutting down...');
+    console.log('Shutdown signal received, stopping Dice Agent...');
+    console.log('Dice Agent stopped');
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('\nReceived termination signal, shutting down...');
+    console.log('Shutdown signal received, stopping Dice Agent...');
+    console.log('Dice Agent stopped');
     process.exit(0);
 });
 

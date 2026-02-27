@@ -37,19 +37,19 @@ Send a message to an agent using the default REST transport:
 #### JSON-RPC 2.0 (WebSocket)
 
 ```bash
-./client --transport jsonrpc --port 11000 --message "Roll a 6-sided dice"
+./client --transport jsonrpc --port 12001 --message "Roll a 6-sided dice"
 ```
 
 #### gRPC
 
 ```bash
-./client --transport grpc --port 11001 --message "Is 17 prime?"
+./client --transport grpc --port 12000 --message "Is 17 prime?"
 ```
 
 #### REST (HTTP+JSON)
 
 ```bash
-./client --transport rest --port 11002 --message "Check if 2, 7, 11 are prime"
+./client --transport rest --port 12002 --message "Check if 2, 7, 11 are prime"
 ```
 
 ### Streaming Mode
@@ -80,9 +80,9 @@ Connect to a remote agent:
 
 ## Default Ports
 
-- JSON-RPC 2.0: `11000`
-- gRPC: `11001`
-- REST: `11002`
+- JSON-RPC 2.0: `12001`
+- gRPC: `12000`
+- REST: `12002`
 
 ## Examples
 
@@ -97,12 +97,12 @@ Output:
 ```
 ============================================================
 A2A Client
-  Server: http://localhost:11002
+  Server: http://localhost:12002
   Transport: rest
   Streaming: false
   Message: Roll a 20-sided dice
 ============================================================
-Connecting to agent at: http://localhost:11002
+Connecting to agent at: http://localhost:12002
 Successfully fetched agent card:
   Name: Dice Agent
   Description: An agent that can roll arbitrary dice and check prime numbers
@@ -122,7 +122,7 @@ I rolled a 20-sided dice and got: 17
 ### Example 2: Check Prime Numbers
 
 ```bash
-./client --transport jsonrpc --port 11000 --message "Check if 2, 7, 11, 15 are prime"
+./client --transport jsonrpc --port 12001 --message "Check if 2, 7, 11, 15 are prime"
 ```
 
 ### Example 3: Streaming Response
@@ -232,7 +232,7 @@ Ensure the agent is running on the specified host and port:
 
 ```bash
 # Check if agent is listening
-curl http://localhost:11002/.well-known/agent-card.json
+curl http://localhost:12002/.well-known/agent-card.json
 ```
 
 ### WebSocket Connection Failed
