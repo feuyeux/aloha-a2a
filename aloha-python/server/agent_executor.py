@@ -11,7 +11,10 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, Part, TaskState, TextPart
 
-from server.tools import check_prime, roll_dice
+try:
+    from .tools import check_prime, roll_dice
+except ImportError:
+    from server.tools import check_prime, roll_dice
 
 logger = logging.getLogger(__name__)
 

@@ -26,6 +26,7 @@ type AlohaServer struct {
 	grpcPort    int
 	restPort    int
 	host        string
+	transportMode string
 
 	executor       *DiceAgentExecutor
 	requestHandler a2asrv.RequestHandler
@@ -33,15 +34,16 @@ type AlohaServer struct {
 }
 
 // NewAlohaServer creates a new Aloha Server instance
-func NewAlohaServer(grpcPort, jsonrpcPort, restPort int, host string) *AlohaServer {
+func NewAlohaServer(grpcPort, jsonrpcPort, restPort int, host string, transportMode string) *AlohaServer {
 	executor := NewDiceAgentExecutor()
 
 	server := &AlohaServer{
-		grpcPort:    grpcPort,
-		jsonrpcPort: jsonrpcPort,
-		restPort:    restPort,
-		host:        host,
-		executor:    executor,
+		grpcPort:      grpcPort,
+		jsonrpcPort:   jsonrpcPort,
+		restPort:     restPort,
+		host:          host,
+		transportMode: transportMode,
+		executor:      executor,
 	}
 
 	// Create agent card
@@ -56,10 +58,26 @@ func NewAlohaServer(grpcPort, jsonrpcPort, restPort int, host string) *AlohaServ
 
 // createAgentCard creates the agent card describing capabilities
 func (a *AlohaServer) createAgentCard() *a2a.AgentCard {
+	// Determine URL and preferred transport based on transport mode
+	var url string
+	var preferredTransport a2a.TransportProtocol
+
+	switch a.transportMode {
+	case "grpc":
+		url = fmt.Sprintf("localhost:%d", a.grpcPort)
+		preferredTransport = a2a.TransportProtocolGRPC
+	case "jsonrpc":
+		url = fmt.Sprintf("http://localhost:%d", a.jsonrpcPort)
+		preferredTransport = a2a.TransportProtocolJSONRPC
+	default: // rest
+		url = fmt.Sprintf("http://localhost:%d", a.restPort)
+		preferredTransport = a2a.TransportProtocolHTTPJSON
+	}
+
 	return &a2a.AgentCard{
 		Name:        "Dice Agent",
 		Description: "An agent that can roll arbitrary dice and check prime numbers",
-		URL:         fmt.Sprintf("http://localhost:%d", a.jsonrpcPort),
+		URL:         url,
 		Version:     "1.0.0",
 		Capabilities: a2a.AgentCapabilities{
 			Streaming: true,
@@ -96,7 +114,7 @@ func (a *AlohaServer) createAgentCard() *a2a.AgentCard {
 				URL:       fmt.Sprintf("http://localhost:%d", a.restPort),
 			},
 		},
-		PreferredTransport: a2a.TransportProtocolJSONRPC,
+		PreferredTransport: preferredTransport,
 	}
 }
 
@@ -138,10 +156,21 @@ func (a *AlohaServer) Start(ctx context.Context) error {
 
 	log.Println("============================================================")
 	log.Println("Dice Agent is running with the following transports:")
+	log.Printf("  - Active Mode:  %s", a.transportMode)
 	log.Printf("  - gRPC:         %s:%d", a.host, a.grpcPort)
 	log.Printf("  - JSON-RPC 2.0: http://%s:%d", a.host, a.jsonrpcPort)
 	log.Printf("  - REST:         http://%s:%d", a.host, a.restPort)
-	log.Printf("  - Agent Card:   http://%s:%d/.well-known/agent-card.json", a.host, a.jsonrpcPort)
+	// Agent card URL depends on transport mode
+	var agentCardPort int
+	switch a.transportMode {
+	case "grpc":
+		agentCardPort = a.restPort
+	case "jsonrpc":
+		agentCardPort = a.jsonrpcPort
+	default:
+		agentCardPort = a.restPort
+	}
+	log.Printf("  - Agent Card:   http://%s:%d/.well-known/agent-card.json", a.host, agentCardPort)
 	log.Println("  - SDK: github.com/a2aproject/a2a-go v0.3.7")
 	log.Println("============================================================")
 
@@ -392,9 +421,10 @@ func main() {
 	jsonrpcPort := getEnvInt("JSONRPC_PORT", 12001)
 	restPort := getEnvInt("REST_PORT", 12002)
 	host := getEnv("HOST", "0.0.0.0")
+	transportMode := getEnv("TRANSPORT_MODE", "jsonrpc")
 
 	// Create server
-	server := NewAlohaServer(grpcPort, jsonrpcPort, restPort, host)
+	server := NewAlohaServer(grpcPort, jsonrpcPort, restPort, host, transportMode)
 
 	// Setup context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())

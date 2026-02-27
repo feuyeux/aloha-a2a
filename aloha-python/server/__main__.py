@@ -3,7 +3,10 @@
 import asyncio
 import sys
 
-from server.agent import main
+try:
+    from .agent import main
+except ImportError:
+    from server.agent import main
 
 if __name__ == "__main__":
     try:

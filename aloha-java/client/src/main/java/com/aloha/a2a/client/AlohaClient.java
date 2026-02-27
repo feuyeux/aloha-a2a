@@ -66,7 +66,6 @@ public class AlohaClient {
     private static final int DEFAULT_GRPC_PORT = 11000;
     private static final int DEFAULT_JSONRPC_PORT = 11001;
     private static final int DEFAULT_REST_PORT = 11002;
-    private static final int DEFAULT_GRPC_AGENT_CARD_PORT = 11001;
     private static final String DEFAULT_MESSAGE = "Roll a 6-sided dice";
     private static final ObjectMapper objectMapper = new ObjectMapper();
     public static final String HTTP = "http://";
@@ -544,9 +543,6 @@ public class AlohaClient {
                 case "rest" -> DEFAULT_REST_PORT;
                 default -> DEFAULT_GRPC_PORT;
             };
-        }
-        if (agentCardPort == null && "grpc".equals(transport)) {
-            agentCardPort = DEFAULT_GRPC_AGENT_CARD_PORT;
         }
 
         String serverUrl = buildServerUrl(host, port, transport);

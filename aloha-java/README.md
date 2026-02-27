@@ -39,7 +39,7 @@ mvn clean install
 
 ## gRPC Transport
 
-### Server
+### gRPC Server
 
 ```bash
 cd server && mvn exec:exec -Dtransport.mode=grpc
@@ -57,7 +57,7 @@ cd server ; mvn exec:exec "-Dtransport.mode=grpc"
 ```bash
 cd client && mvn exec:exec -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
 # PowerShell
-cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport grpc --port 11000 --message 'Roll a 20-sided dice'"""
+cd client; mvn exec:exec "-Dexec.args=--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
 ```
 
 ## JSON-RPC Transport
@@ -80,7 +80,7 @@ cd server ; mvn exec:exec "-Dtransport.mode=jsonrpc"
 ```bash
 cd client && mvn exec:exec -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
 # PowerShell
-cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"""
+cd client; mvn exec:exec "-Dexec.args=--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
 ```
 
 ## REST Transport
@@ -103,7 +103,7 @@ cd server ; mvn exec:exec "-Dtransport.mode=rest"
 ```bash
 cd client && mvn exec:exec -Dexec.args="--transport rest --port 11002 --message 'Check if 13 is prime'"
 # PowerShell
-cd client ; cmd /c "mvn exec:exec -Dexec.args=""--transport rest --port 11002 --message 'Check if 13 is prime'"""
+cd client; mvn exec:exec "-Dexec.args=--transport rest --port 11002 --message 'Check if 13 is prime'"
 ```
 
 ## Configuration

@@ -7,7 +7,10 @@ import json
 
 import click
 
-from client.client import AlohaClient
+try:
+    from .client import AlohaClient
+except ImportError:
+    from client import AlohaClient
 
 # Configure logging
 logging.basicConfig(

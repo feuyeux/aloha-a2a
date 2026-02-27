@@ -14,7 +14,10 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill, AgentProvider
 import uvicorn
 
-from server.agent_executor import DiceAgentExecutor
+try:
+    from .agent_executor import DiceAgentExecutor
+except ImportError:
+    from server.agent_executor import DiceAgentExecutor
 
 # Load environment variables from .env file
 load_dotenv()
@@ -84,7 +87,7 @@ class DiceAgent:
             preferred = "JSONRPC"
         else:
             url = f"http://localhost:{self.rest_port}"
-            preferred = "REST"
+            preferred = "HTTP+JSON"
 
         return AgentCard(
             protocol_version="0.3.0",

@@ -19,9 +19,9 @@ import (
 
 func main() {
 	// Parse command-line flags
-	transport := flag.String("transport", "jsonrpc", "Transport protocol to use (jsonrpc, grpc)")
+	transport := flag.String("transport", "jsonrpc", "Transport protocol to use (jsonrpc, grpc, rest)")
 	host := flag.String("host", "localhost", "Agent hostname")
-	port := flag.Int("port", 0, "Agent port (default: 12000 for gRPC, 12001 for JSON-RPC)")
+	port := flag.Int("port", 0, "Agent port (default: 12000 for gRPC, 12001 for JSON-RPC, 12002 for REST)")
 	message := flag.String("message", "", "Message to send to the agent")
 	stream := flag.Bool("stream", false, "Enable streaming response")
 	cardURL := flag.String("card-url", "", "Agent card URL (auto-resolved if empty)")
@@ -30,17 +30,20 @@ func main() {
 
 	// Validate message
 	if *message == "" {
-		fmt.Println("Usage: client --transport <jsonrpc|grpc> --host <hostname> --port <port> --message <text> [--stream]")
+		fmt.Println("Usage: client --transport <jsonrpc|grpc|rest> --host <hostname> --port <port> --message <text> [--stream]")
 		fmt.Println("\nOptions:")
-		fmt.Println("  --transport  Transport protocol (jsonrpc, grpc) [default: jsonrpc]")
+		fmt.Println("  --transport  Transport protocol (jsonrpc, grpc, rest) [default: jsonrpc]")
 		fmt.Println("  --host       Agent hostname [default: localhost]")
-		fmt.Println("  --port       Agent port [default: 12000 for gRPC, 12001 for JSON-RPC]")
+		fmt.Println("  --port       Agent port [default: 12000 for gRPC, 12001 for JSON-RPC, 12002 for REST]")
 		fmt.Println("  --message    Message to send to the agent [required]")
 		fmt.Println("  --stream     Enable streaming response [default: false]")
 		fmt.Println("  --card-url   Agent card URL (auto-resolved from host:port if empty)")
 		fmt.Println("\nExamples:")
 		fmt.Println("  # Send message using JSON-RPC (default)")
 		fmt.Println("  client --message \"Roll a 20-sided dice\"")
+		fmt.Println("")
+		fmt.Println("  # Send message using REST")
+		fmt.Println("  client --transport rest --port 12002 --message \"Roll a 20-sided dice\"")
 		fmt.Println("")
 		fmt.Println("  # Send message using gRPC with streaming")
 		fmt.Println("  client --transport grpc --port 12000 --message \"Check if 2, 7, 11 are prime\" --stream")
@@ -54,8 +57,10 @@ func main() {
 			*port = 12000
 		case "jsonrpc":
 			*port = 12001
+		case "rest":
+			*port = 12002
 		default:
-			log.Fatalf("Unsupported transport: %s (use jsonrpc or grpc)", *transport)
+			log.Fatalf("Unsupported transport: %s (use jsonrpc, grpc, or rest)", *transport)
 		}
 	}
 
@@ -71,7 +76,16 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	// Determine server URL based on transport
+	var serverURL string
+	if *transport == "grpc" {
+		serverURL = fmt.Sprintf("%s:%d", *host, *port)
+	} else {
+		serverURL = fmt.Sprintf("http://%s:%d", *host, *port)
+	}
+
 	var client *a2aclient.Client
+	var restClient *RESTClient
 	var err error
 
 	switch *transport {
@@ -79,6 +93,15 @@ func main() {
 		client, err = createGRPCClient(ctx, *host, *port, *cardURL)
 	case "jsonrpc":
 		client, err = createJSONRPCClient(ctx, *host, *port, *cardURL)
+	case "rest":
+		restClient, err = createRESTClient(ctx, serverURL, *cardURL)
+		if err == nil {
+			log.Printf("Connected to agent: %s (v%s)", restClient.agentCard.Name, restClient.agentCard.Version)
+			log.Printf("  Skills: %d", len(restClient.agentCard.Skills))
+			for _, skill := range restClient.agentCard.Skills {
+				log.Printf("    - %s: %s", skill.Name, skill.Description)
+			}
+		}
 	default:
 		log.Fatalf("Unsupported transport: %s", *transport)
 	}
@@ -86,17 +109,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Destroy()
 
-	// Fetch and display agent card
-	card, err := client.GetAgentCard(ctx)
-	if err != nil {
-		log.Printf("Warning: could not fetch agent card: %v", err)
-	} else {
-		log.Printf("Connected to agent: %s (v%s)", card.Name, card.Version)
-		log.Printf("  Skills: %d", len(card.Skills))
-		for _, skill := range card.Skills {
-			log.Printf("    - %s: %s", skill.Name, skill.Description)
+	if client != nil {
+		defer client.Destroy()
+		// Fetch and display agent card
+		card, err := client.GetAgentCard(ctx)
+		if err != nil {
+			log.Printf("Warning: could not fetch agent card: %v", err)
+		} else {
+			log.Printf("Connected to agent: %s (v%s)", card.Name, card.Version)
+			log.Printf("  Skills: %d", len(card.Skills))
+			for _, skill := range card.Skills {
+				log.Printf("    - %s: %s", skill.Name, skill.Description)
+			}
 		}
 	}
 
@@ -104,10 +129,18 @@ func main() {
 	msg := a2a.NewMessage(a2a.MessageRoleUser, a2a.TextPart{Text: *message})
 	params := &a2a.MessageSendParams{Message: msg}
 
-	if *stream {
-		sendStreamingMessage(ctx, client, params)
+	if *transport == "rest" {
+		if *stream {
+			sendRESTStreamingMessage(ctx, restClient, params)
+		} else {
+			sendRESTMessage(ctx, restClient, params)
+		}
 	} else {
-		sendMessage(ctx, client, params)
+		if *stream {
+			sendStreamingMessage(ctx, client, params)
+		} else {
+			sendMessage(ctx, client, params)
+		}
 	}
 }
 
@@ -135,6 +168,72 @@ func createJSONRPCClient(ctx context.Context, host string, port int, cardURL str
 	return a2aclient.NewFromCard(ctx, card,
 		a2aclient.WithJSONRPCTransport(http.DefaultClient),
 	)
+}
+
+// createRESTClient creates a client using REST transport
+func createRESTClient(ctx context.Context, serverURL, cardURL string) (*RESTClient, error) {
+	log.Printf("Resolving agent card from: %s", cardURL)
+	return NewRESTClient(ctx, serverURL, cardURL)
+}
+
+// sendRESTMessage sends a non-streaming message using REST transport
+func sendRESTMessage(ctx context.Context, client *RESTClient, params *a2a.MessageSendParams) {
+	log.Println("Sending message (non-streaming)...")
+
+	result, err := client.SendMessage(ctx, params)
+	if err != nil {
+		log.Fatalf("Failed to send message: %v", err)
+	}
+
+	fmt.Println("\n============================================================")
+	fmt.Println("Agent Response:")
+	fmt.Println("============================================================")
+
+	if result != nil {
+		fmt.Printf("Task ID: %s\n", result.ID)
+		fmt.Printf("State: %s\n", result.Status.State)
+		if result.Status.Message != nil {
+			printMessageParts(result.Status.Message)
+		}
+		for _, artifact := range result.Artifacts {
+			fmt.Println("--- Artifact ---")
+			for _, part := range artifact.Parts {
+				printPart(part)
+			}
+		}
+	}
+
+	fmt.Println("============================================================")
+}
+
+// sendRESTStreamingMessage sends a streaming message using REST transport
+func sendRESTStreamingMessage(ctx context.Context, client *RESTClient, params *a2a.MessageSendParams) {
+	log.Println("Sending message (streaming)...")
+
+	fmt.Println("\n============================================================")
+	fmt.Println("Agent Response (Streaming):")
+	fmt.Println("============================================================")
+
+	for event := range client.SendStreamingMessage(ctx, params) {
+		switch e := event.(type) {
+		case *a2a.TaskStatusUpdateEvent:
+			fmt.Printf("[Status] State: %s", e.Status.State)
+			if e.Status.Message != nil {
+				fmt.Print(" | ")
+				printMessagePartsInline(e.Status.Message)
+			}
+			fmt.Println()
+			if e.Final {
+				fmt.Println("[Final event]")
+			}
+		case error:
+			log.Fatalf("Stream error: %v", e)
+		default:
+			fmt.Printf("[Event] %v\n", event)
+		}
+	}
+
+	fmt.Println("============================================================")
 }
 
 // resolveAgentCard resolves the agent card from URL or default well-known path

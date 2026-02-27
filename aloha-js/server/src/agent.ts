@@ -81,7 +81,7 @@ export class AlohaServer {
             preferredTransport = 'JSONRPC';
         } else {
             url = `http://localhost:${this.restPort}`;
-            preferredTransport = 'REST';
+            preferredTransport = 'HTTP+JSON';
         }
         
         return {

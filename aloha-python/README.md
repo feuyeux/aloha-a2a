@@ -2,11 +2,11 @@
 
 # Aloha A2A - Python Implementation
 
-A Python implementation of the A2A (Agent-to-Agent) protocol with REST transport support.
+A Python implementation of the A2A (Agent-to-Agent) protocol with support for three transport modes: gRPC, JSON-RPC, and REST (HTTP+JSON).
 
 ## Features
 
-- **REST Transport**: HTTP+JSON based communication
+- **Three Transport Modes**: gRPC, JSON-RPC, and REST (HTTP+JSON)
 - **FastAPI + Uvicorn**: Async HTTP server with automatic OpenAPI docs
 - **LLM Integration**: Uses Ollama with qwen2.5 model via native API
 - **Tool Support**: Roll dice and check prime numbers
@@ -14,9 +14,13 @@ A Python implementation of the A2A (Agent-to-Agent) protocol with REST transport
 
 ## Port Configuration
 
-| Transport Mode    | Server Port | Agent Card URL                                       |
-|:------------------|:------------|:-----------------------------------------------------|
-| REST (HTTP+JSON)  | 13002       | `http://localhost:13002/.well-known/agent-card.json` |
+| Transport Mode   | Server Port | Agent Card URL                                       |
+|:-----------------|:------------|:-----------------------------------------------------|
+| gRPC             | 13000       | `http://localhost:13002/.well-known/agent-card.json` |
+| JSON-RPC         | 13001       | `http://localhost:13001/.well-known/agent-card.json` |
+| REST (HTTP+JSON)| 13002       | `http://localhost:13002/.well-known/agent-card.json` |
+
+> In gRPC mode, the gRPC service runs on port 13000 while the Agent Card HTTP endpoint runs on REST port (default 13002).
 
 ## Prerequisites
 
@@ -28,65 +32,106 @@ A Python implementation of the A2A (Agent-to-Agent) protocol with REST transport
 
 ```bash
 cd aloha-python
-
-# Using uv (recommended)
-cd server && uv venv && source .venv/bin/activate && uv pip install -e .
-
-# Using pip
-cd server && python -m venv .venv && source .venv/bin/activate && pip install -e .
+cd server && uv venv && uv pip install -e .
+cd ../client && uv venv && uv pip install -e .
 ```
 
-## REST Transport
+## gRPC Transport
 
-### Server
-
-```bash
-cd server && uv run python -m server
-# PowerShell
-cd server ; uv run python -m server
-```
-
-Or with virtual environment:
+### gRPC Server
 
 ```bash
-cd server && source .venv/bin/activate && python -m server
+# Bash
+cd aloha-python
+TRANSPORT_MODE=grpc uv run python -m server
+
 # PowerShell
-cd server ; .\.venv\Scripts\activate ; python -m server
+cd aloha-python
+$env:TRANSPORT_MODE="grpc"; uv run python -m server
 ```
 
 **Endpoints**:
 
-- REST: `http://localhost:13002`
+- gRPC: `localhost:13000`
 - Agent Card: `http://localhost:13002/.well-known/agent-card.json`
 
-### Client
+### gRPC Client
 
 ```bash
-cd client && uv run python __main__.py --message "Roll a 20-sided dice"
+cd aloha-python
+uv run python -m client --transport grpc --port 13000 --message "Roll a 20-sided dice"
+```
+
+## JSON-RPC Transport
+
+### JSON-RPC Server
+
+```bash
+# Bash
+cd aloha-python
+TRANSPORT_MODE=jsonrpc uv run python -m server
+
 # PowerShell
-cd client ; uv run python __main__.py --message "Roll a 20-sided dice"
+cd aloha-python
+$env:TRANSPORT_MODE="jsonrpc"; uv run python -m server
+```
+
+**Endpoints**:
+
+- JSON-RPC: `http://localhost:13001`
+- Agent Card: `http://localhost:13001/.well-known/agent-card.json`
+
+### JSON-RPC Client
+
+```bash
+cd aloha-python
+uv run python -m client --transport jsonrpc --port 13001 --message "Check if 17 is prime"
+```
+
+## REST Transport
+
+### REST Server
+
+```bash
+cd aloha-python
+uv run python -m server
+```
+
+**Endpoints**:
+
+- REST (HTTP+JSON): `http://localhost:13002`
+- Agent Card: `http://localhost:13002/.well-known/agent-card.json`
+
+### REST Client
+
+```bash
+cd aloha-python
+uv run python -m client --transport rest --port 13002 --message "Roll a 20-sided dice"
 ```
 
 ### Client Options
 
 ```bash
 # With custom port
-uv run python __main__.py --port 13002 --message "Roll a 6-sided dice"
+uv run python -m client --port 13002 --message "Roll a 6-sided dice"
 
 # Probe transport capabilities
-uv run python __main__.py --probe
+uv run python -m client --probe
 ```
 
 ## Configuration
 
 Server configuration via environment variables. Copy `.env.example` to `.env` in the `server/` directory.
 
-| Variable           | Default                   | Description                     |
-|:-------------------|:--------------------------|:--------------------------------|
-| `REST_PORT`        | `13002`                   | REST server port                |
-| `HOST`             | `0.0.0.0`                 | Bind address                    |
-| `OLLAMA_BASE_URL`  | `http://localhost:11434`  | Ollama API base URL             |
-| `OLLAMA_MODEL`     | `qwen2.5`                 | Ollama model name               |
+| Property           | Default                   | Description                            |
+|:-------------------|:--------------------------|:--------------------------------------|
+| `TRANSPORT_MODE`   | `rest`                    | Transport: `grpc`, `jsonrpc`, `rest` |
+| `GRPC_PORT`       | `13000`                   | gRPC server port                      |
+| `JSONRPC_PORT`    | `13001`                   | JSON-RPC server port                  |
+| `REST_PORT`       | `13002`                   | REST server port                      |
+| `HOST`            | `0.0.0.0`                 | Bind address                          |
+| `OLLAMA_BASE_URL` | `http://localhost:11434`  | Ollama API base URL                   |
+| `OLLAMA_MODEL`    | `qwen2.5`                 | Ollama model name                     |
 
 ## Agent Tools
 

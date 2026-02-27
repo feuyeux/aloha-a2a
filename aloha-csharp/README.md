@@ -6,8 +6,7 @@ A C# implementation of the A2A (Agent-to-Agent) protocol using the [official A2A
 
 ## Features
 
-- **JSON-RPC 2.0 Transport**: Standard JSON-RPC over HTTP via SDK's `MapA2A()`
-- **REST Transport**: HTTP+JSON based communication via SDK's `MapHttpA2A()`
+- **Two Transport Modes**: JSON-RPC and REST (HTTP+JSON)
 - **Official A2A SDK**: Uses `A2A` + `A2A.AspNetCore` 0.3.3-preview NuGet packages
 - **ASP.NET Core**: Minimal API
 - **LLM Integration**: Uses Ollama with qwen2.5 model via Semantic Kernel
@@ -18,10 +17,10 @@ A C# implementation of the A2A (Agent-to-Agent) protocol using the [official A2A
 
 ## Port Configuration
 
-| Transport Mode    | Server Port | Agent Card URL                                       |
-|:------------------|:------------|:-----------------------------------------------------|
-| JSON-RPC 2.0      | 15001       | `http://localhost:15001/.well-known/agent-card.json` |
-| REST (HTTP+JSON)  | 15002       | `http://localhost:15002/.well-known/agent-card.json` |
+| Transport Mode   | Server Port | Agent Card URL                                       |
+|:-----------------|:------------|:-----------------------------------------------------|
+| JSON-RPC         | 15001       | `http://localhost:15001/.well-known/agent-card.json` |
+| REST (HTTP+JSON)| 15002       | `http://localhost:15002/.well-known/agent-card.json` |
 
 ## Prerequisites
 
@@ -36,14 +35,13 @@ dotnet restore
 dotnet build
 ```
 
-## REST Transport
+## JSON-RPC Transport
 
-### Server
+### JSON-RPC Server
 
 ```bash
-cd Server && dotnet run
-# PowerShell
-cd Server ; dotnet run
+cd aloha-csharp/Server
+dotnet run
 ```
 
 Both transports start simultaneously:
@@ -52,14 +50,37 @@ Both transports start simultaneously:
 - REST: `http://localhost:15002`
 - Agent Card: `http://localhost:15001/.well-known/agent-card.json`
 
-### Client
+### JSON-RPC Client
 
 The client uses the A2A SDK with JSON-RPC transport.
 
 ```bash
-cd Client && dotnet run -- --message "Roll a 20-sided dice"
-# PowerShell
-cd Client ; dotnet run -- --message "Roll a 20-sided dice"
+cd aloha-csharp/Client
+dotnet run -- --message "Roll a 20-sided dice"
+```
+
+## REST Transport
+
+### REST Server
+
+```bash
+cd aloha-csharp/Server
+dotnet run
+```
+
+Both transports start simultaneously:
+
+- JSON-RPC: `http://localhost:15001`
+- REST (HTTP+JSON): `http://localhost:15002`
+- Agent Card: `http://localhost:15001/.well-known/agent-card.json`
+
+### REST Client
+
+The client uses the A2A SDK with JSON-RPC transport.
+
+```bash
+cd aloha-csharp/Client
+dotnet run -- --message "Roll a 20-sided dice"
 ```
 
 ### Client Options
@@ -79,13 +100,13 @@ dotnet run -- --port 15001 --message "Roll a 6-sided dice"
 
 All settings are in `Server/appsettings.json`. Override with environment variables.
 
-| Property              | Default                   | Description                     |
-|:----------------------|:--------------------------|:--------------------------------|
-| `Ports:JsonRpc`       | `15001`                   | JSON-RPC server port            |
-| `Ports:Rest`          | `15002`                   | REST server port                |
-| `Ollama:BaseUrl`      | `http://localhost:11434`  | Ollama API base URL             |
-| `Ollama:Model`        | `qwen2.5`                 | Ollama model name               |
-| `Ollama:Temperature`  | `0.7`                     | LLM temperature                 |
+| Property             | Default                   | Description                            |
+|:---------------------|:--------------------------|:--------------------------------------|
+| `Ports:JsonRpc`     | `15001`                   | JSON-RPC server port                  |
+| `Ports:Rest`        | `15002`                   | REST server port                      |
+| `Ollama:BaseUrl`    | `http://localhost:11434`  | Ollama API base URL                   |
+| `Ollama:Model`      | `qwen2.5`                 | Ollama model name                     |
+| `Ollama:Temperature`| `0.7`                     | LLM temperature                       |
 
 Environment variables (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) take precedence over config file.
 
