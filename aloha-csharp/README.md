@@ -35,6 +35,54 @@ dotnet restore
 dotnet build
 ```
 
+Or use the build script:
+
+```bash
+# Bash
+cd aloha-csharp && ./scripts/build
+
+# PowerShell
+cd aloha-csharp && ./scripts/build.bat
+```
+
+## Quick Start with Scripts
+
+Convenience scripts are provided for running servers and clients:
+
+### Server Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `Server/scripts/jsonrpc_server` | JSON-RPC | 15001 |
+| `Server/scripts/rest_server` | REST | 15002 |
+
+> Both transports start simultaneously when running either script.
+
+```bash
+# Bash - Start JSON-RPC server
+./Server/scripts/jsonrpc_server
+
+# PowerShell - Start REST server
+./Server/scripts/rest_server.bat
+```
+
+### Client Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `Client/scripts/jsonrpc_client` | JSON-RPC | 15001 |
+| `Client/scripts/rest_client` | REST | 15002 |
+
+```bash
+# Bash - Test with JSON-RPC client
+./Client/scripts/jsonrpc_client
+
+# PowerShell - Test with REST client
+./Client/scripts/rest_client.bat
+```
+
+> **Note**: gRPC is not supported in the C# A2A SDK v0.3.3-preview.
+
 ## JSON-RPC Transport
 
 ### JSON-RPC Server

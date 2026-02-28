@@ -41,7 +41,7 @@ public class AlohaServer {
         AppConfig config = new AppConfig();
 
         String mode = config.getTransportMode();
-        logger.info("Transport mode: {}", mode);
+        logger.info("Server transport: {}", mode.toUpperCase());
         logger.info("Ollama:         {} (model={})", config.getOllamaBaseUrl(), config.getOllamaModel());
 
         // 2. Wire components (manual DI)
@@ -82,8 +82,9 @@ public class AlohaServer {
         }, "shutdown-hook"));
 
         logger.info("============================================================");
-        logger.info("Dice Agent is running with the following transports:");
-        logger.info("  - gRPC:         http://localhost:{}", config.getGrpcPort());
+        logger.info("Dice Agent is running:");
+        logger.info("  - Transport:    GRPC");
+        logger.info("  - gRPC endpoint: localhost:{}", config.getGrpcPort());
         logger.info("  - HTTP:         http://localhost:{}", config.getHttpPort());
         logger.info("  - Agent Card:   http://localhost:{}/.well-known/agent-card.json", config.getHttpPort());
         logger.info("============================================================");
@@ -108,9 +109,10 @@ public class AlohaServer {
         }, "shutdown-hook"));
 
         logger.info("============================================================");
-        logger.info("Dice Agent is running with the following transports:");
-        logger.info("  - JSON-RPC:     http://localhost:{}", config.getHttpPort());
-        logger.info("  - Agent Card:   http://localhost:{}/.well-known/agent-card.json", config.getHttpPort());
+        logger.info("Dice Agent is running:");
+        logger.info("  - Transport:    JSON-RPC");
+        logger.info("  - JSON-RPC:      http://localhost:{}", config.getHttpPort());
+        logger.info("  - Agent Card:    http://localhost:{}/.well-known/agent-card.json", config.getHttpPort());
         logger.info("============================================================");
         server.awaitTermination();
 
@@ -131,7 +133,8 @@ public class AlohaServer {
         }, "shutdown-hook"));
 
         logger.info("============================================================");
-        logger.info("Dice Agent is running with the following transports:");
+        logger.info("Dice Agent is running:");
+        logger.info("  - Transport:    REST");
         logger.info("  - REST:         http://localhost:{}", config.getRestPort());
         logger.info("  - Agent Card:   http://localhost:{}/.well-known/agent-card.json", config.getRestPort());
         logger.info("============================================================");

@@ -29,16 +29,48 @@ You will also need the specific runtime for your chosen language (JDK 21+, Pytho
 3. Follow the **README** in that folder to install dependencies and start the Server.
 4. Run the corresponding Client (or a Client from another language) to exchange messages.
 
-**Example (Python):**
+### Using Scripts (Recommended)
+
+Each language module includes scripts in the `scripts/` directory for convenient server/client startup:
+
+| Language | Server Scripts | Client Scripts |
+|----------|---------------|----------------|
+| JavaScript/TypeScript | `aloha-js/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-js/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+| Python | `aloha-python/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-python/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+| Java | `aloha-java/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-java/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+
+**Example (JavaScript/TypeScript):**
+
+```bash
+# Terminal 1: Start REST Server
+aloha-js\server\scripts\rest_server.bat
+
+# Terminal 2: Run REST Client
+aloha-js\client\scripts\rest_client.bat
+```
+
+**Example (Java):**
+
+```bash
+# Terminal 1: Start REST Server
+aloha-java\server\scripts\rest_server.bat
+
+# Terminal 2: Run REST Client
+aloha-java\client\scripts\rest_client.bat
+```
+
+### Manual Startup
+
+**Python (requires uv):**
 
 ```bash
 # Terminal 1: Start Server
 cd aloha-python/server
-pip install -e .
-python -m server
+uv sync
+uv run python agent.py
 
 # Terminal 2: Run Client
 cd aloha-python/client
-pip install -e .
-python -m client --message "Hello A2A!"
+uv sync
+uv run python -m client --message "Hello A2A!"
 ```

@@ -10,7 +10,7 @@ A Python implementation of the A2A (Agent-to-Agent) protocol with support for th
 - **FastAPI + Uvicorn**: Async HTTP server with automatic OpenAPI docs
 - **LLM Integration**: Uses Ollama with qwen2.5 model via native API
 - **Tool Support**: Roll dice and check prime numbers
-- **A2A SDK**: Uses A2A Python SDK v0.3.10 (compatible with A2A Protocol v0.3.x)
+- **A2A SDK**: Uses A2A Python SDK v0.3.24 (compatible with A2A Protocol v0.3.x)
 
 ## Port Configuration
 
@@ -34,6 +34,52 @@ A Python implementation of the A2A (Agent-to-Agent) protocol with support for th
 cd aloha-python
 cd server && uv venv && uv pip install -e .
 cd ../client && uv venv && uv pip install -e .
+```
+
+Or use the build script:
+
+```bash
+# Bash
+cd aloha-python && ./scripts/build
+
+# PowerShell
+cd aloha-python && ./scripts/build.bat
+```
+
+## Quick Start with Scripts
+
+Convenience scripts are provided for running servers and clients:
+
+### Server Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `server/scripts/grpc_server` | gRPC | 13000 |
+| `server/scripts/jsonrpc_server` | JSON-RPC | 13001 |
+| `server/scripts/rest_server` | REST | 13002 |
+
+```bash
+# Bash - Start gRPC server
+./server/scripts/grpc_server
+
+# PowerShell - Start REST server
+./server/scripts/rest_server.bat
+```
+
+### Client Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `client/scripts/grpc_client` | gRPC | 13000 |
+| `client/scripts/jsonrpc_client` | JSON-RPC | 13001 |
+| `client/scripts/rest_client` | REST | 13002 |
+
+```bash
+# Bash - Test with gRPC client
+./client/scripts/grpc_client
+
+# PowerShell - Test with REST client
+./client/scripts/rest_client.bat
 ```
 
 ## gRPC Transport

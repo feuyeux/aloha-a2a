@@ -35,6 +35,54 @@ go mod tidy
 go build ./...
 ```
 
+Or use the build script:
+
+```bash
+# Bash
+cd aloha-go && ./scripts/build
+
+# PowerShell
+cd aloha-go && ./scripts/build.bat
+```
+
+## Quick Start with Scripts
+
+Convenience scripts are provided for running servers and clients:
+
+### Server Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `server/scripts/grpc_server` | gRPC | 12000 |
+| `server/scripts/jsonrpc_server` | JSON-RPC | 12001 |
+| `server/scripts/rest_server` | REST | 12002 |
+
+```bash
+# Bash - Start gRPC server
+./server/scripts/grpc_server
+
+# PowerShell - Start REST server
+./server/scripts/rest_server.bat
+```
+
+### Client Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `client/scripts/grpc_client` | gRPC | 12000 |
+| `client/scripts/jsonrpc_client` | JSON-RPC | 12001 |
+| `client/scripts/rest_client` | REST | 12002 |
+
+```bash
+# Bash - Test with gRPC client
+./client/scripts/grpc_client
+
+# PowerShell - Test with REST client
+./client/scripts/rest_client.bat
+```
+
+> **Note**: For gRPC transport, clients must specify `--card-url` to point to the HTTP endpoint serving the agent card.
+
 ## gRPC Transport
 
 ### gRPC Server

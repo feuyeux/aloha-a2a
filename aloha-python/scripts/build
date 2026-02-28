@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+cd "$(dirname "$0")/.."
+
+echo "Building Python server..."
+cd server
+if command -v uv &> /dev/null; then
+    uv venv --quiet 2>/dev/null || true
+    uv pip install -e . --quiet
+else
+    pip install -e . --quiet
+fi
+
+echo "Building Python client..."
+cd ../client
+if command -v uv &> /dev/null; then
+    uv venv --quiet 2>/dev/null || true
+    uv pip install -e . --quiet
+else
+    pip install -e . --quiet
+fi
+
+echo "Python build completed successfully!"

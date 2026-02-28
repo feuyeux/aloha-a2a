@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+cd "$(dirname "$0")/.."
+
+echo "Building Go project..."
+go mod tidy
+go build ./...
+
+echo "Go build completed successfully!"

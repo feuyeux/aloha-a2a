@@ -10,7 +10,7 @@ A TypeScript implementation of the A2A (Agent-to-Agent) protocol with support fo
 - **TypeScript + Express**: Type-safe server with Express.js
 - **LLM Integration**: Uses Ollama with qwen2.5 model via Genkit
 - **Tool Support**: Roll dice and check prime numbers
-- **A2A SDK**: Uses @anthropic/a2a-js SDK (compatible with A2A Protocol v0.3.x)
+- **A2A SDK**: Uses @a2a-js/sdk v0.3.10 (compatible with A2A Protocol v0.3.x)
 
 ## Port Configuration
 
@@ -34,6 +34,52 @@ A TypeScript implementation of the A2A (Agent-to-Agent) protocol with support fo
 cd aloha-js
 cd server && npm install && npm run build
 cd ../client && npm install && npm run build
+```
+
+Or use the build script:
+
+```bash
+# Bash
+cd aloha-js && ./scripts/build
+
+# PowerShell
+cd aloha-js && ./scripts/build.bat
+```
+
+## Quick Start with Scripts
+
+Convenience scripts are provided for running servers and clients:
+
+### Server Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `server/scripts/grpc_server` | gRPC | 14000 |
+| `server/scripts/jsonrpc_server` | JSON-RPC | 14001 |
+| `server/scripts/rest_server` | REST | 14002 |
+
+```bash
+# Bash - Start gRPC server
+./server/scripts/grpc_server
+
+# PowerShell - Start REST server
+./server/scripts/rest_server.bat
+```
+
+### Client Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `client/scripts/grpc_client` | gRPC | 14000 |
+| `client/scripts/jsonrpc_client` | JSON-RPC | 14001 |
+| `client/scripts/rest_client` | REST | 14002 |
+
+```bash
+# Bash - Test with gRPC client
+./client/scripts/grpc_client
+
+# PowerShell - Test with REST client
+./client/scripts/rest_client.bat
 ```
 
 ## gRPC Transport

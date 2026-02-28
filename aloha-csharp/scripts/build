@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+cd "$(dirname "$0")/.."
+
+echo "Building C# project..."
+dotnet restore
+dotnet build
+
+echo "C# build completed successfully!"

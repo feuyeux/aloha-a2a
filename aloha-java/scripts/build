@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+cd "$(dirname "$0")/.."
+
+echo "Building Java project..."
+mvn clean install -q
+
+echo "Java build completed successfully!"

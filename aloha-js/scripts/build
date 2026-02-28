@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+cd "$(dirname "$0")/.."
+
+echo "Building JavaScript server..."
+cd server
+npm install --silent
+npm run build
+
+echo "Building JavaScript client..."
+cd ../client
+npm install --silent
+npm run build
+
+echo "JavaScript build completed successfully!"

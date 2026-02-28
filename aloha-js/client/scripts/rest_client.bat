@@ -1,0 +1,3 @@
+@echo off
+cd /d %~dp0..
+node dist/index.js --transport rest --host localhost --port 14002 --message "Roll a 6-sided dice"

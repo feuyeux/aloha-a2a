@@ -37,6 +37,52 @@ cd aloha-java
 mvn clean install
 ```
 
+Or use the build script:
+
+```bash
+# Bash
+cd aloha-java && ./scripts/build
+
+# PowerShell
+cd aloha-java && ./scripts/build.bat
+```
+
+## Quick Start with Scripts
+
+Convenience scripts are provided for running servers and clients:
+
+### Server Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `server/scripts/grpc_server` | gRPC | 11000 |
+| `server/scripts/jsonrpc_server` | JSON-RPC | 11001 |
+| `server/scripts/rest_server` | REST | 11002 |
+
+```bash
+# Bash - Start gRPC server
+./server/scripts/grpc_server
+
+# PowerShell - Start REST server
+./server/scripts/rest_server.bat
+```
+
+### Client Scripts
+
+| Script | Transport | Port |
+|:-------|:----------|:-----|
+| `client/scripts/grpc_client` | gRPC | 11000 |
+| `client/scripts/jsonrpc_client` | JSON-RPC | 11001 |
+| `client/scripts/rest_client` | REST | 11002 |
+
+```bash
+# Bash - Test with gRPC client
+./client/scripts/grpc_client
+
+# PowerShell - Test with REST client
+./client/scripts/rest_client.bat
+```
+
 ## gRPC Transport
 
 ### gRPC Server

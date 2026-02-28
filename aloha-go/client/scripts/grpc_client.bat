@@ -1,0 +1,3 @@
+@echo off
+cd /d %~dp0..
+go run . --transport grpc --port 12000 --card-url http://localhost:12002 --message "Roll a 6-sided dice"

@@ -19,7 +19,7 @@ async function main() {
     const host = process.env.HOST || '0.0.0.0';
     const transportMode = (process.env.TRANSPORT_MODE || 'rest').toLowerCase();
 
-    console.log(`Transport mode: ${transportMode}`);
+    console.log(`Server transport: ${transportMode.toUpperCase()}`);
 
     // Create and start server
     const server = new AlohaServer(grpcPort, jsonrpcPort, restPort, host, transportMode);

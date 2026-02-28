@@ -166,9 +166,9 @@ export class AlohaServer {
         return new Promise((resolve) => {
             expressApp.listen(this.restPort, () => {
                 console.log('============================================================');
-                console.log('Dice Agent is running with the following transports:');
+                console.log('Dice Agent is running:');
+                console.log(`  - Transport:    REST`);
                 console.log(`  - REST:         http://${this.host}:${this.restPort}`);
-                console.log(`  - Agent Card:   http://${this.host}:${this.restPort}/.well-known/agent-card.json`);
                 console.log('============================================================');
                 resolve();
             });
@@ -194,9 +194,9 @@ export class AlohaServer {
         return new Promise((resolve) => {
             expressApp.listen(this.jsonrpcPort, () => {
                 console.log('============================================================');
-                console.log('Dice Agent is running with the following transports:');
+                console.log('Dice Agent is running:');
+                console.log(`  - Transport:    JSON-RPC`);
                 console.log(`  - JSON-RPC:     http://${this.host}:${this.jsonrpcPort}`);
-                console.log(`  - Agent Card:   http://${this.host}:${this.jsonrpcPort}/.well-known/agent-card.json`);
                 console.log('============================================================');
                 resolve();
             });
@@ -235,9 +235,9 @@ export class AlohaServer {
         return new Promise((resolve) => {
             expressApp.listen(this.restPort, () => {
                 console.log('============================================================');
-                console.log('Dice Agent is running with the following transports:');
+                console.log('Dice Agent is running:');
+                console.log(`  - Transport:    gRPC`);
                 console.log(`  - gRPC:         ${this.host}:${this.grpcPort}`);
-                console.log(`  - Agent Card:   http://${this.host}:${this.restPort}/.well-known/agent-card.json`);
                 console.log('============================================================');
                 resolve();
             });
