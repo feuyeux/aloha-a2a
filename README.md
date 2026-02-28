@@ -1,14 +1,14 @@
-﻿# Hello Agent2Agent (A2A) Protocol
+﻿# Aloha A2A - Multi-Language A2A Protocol Implementation
 
 The [A2A protocol](https://a2a-protocol.org) standardizes communication between AI agents, enabling seamless interaction regardless of the underlying technology stack.
 
 | Language | SDK Version | SDK URL | Dependency Definition | gRPC | JSON-RPC | REST |
 |:---------|:------------|:--------|:----------------------|:-----|:---------|:-----|
-| Java | v0.3.3.Final | [a2a-java](https://github.com/a2aproject/a2a-java) | [pom.xml:26](aloha-java/pom.xml#L26) | 11000 ✅ | 11001 ✅ | 11002 ✅ |
-| Python | v0.3.10 | [a2a-python](https://github.com/a2aproject/a2a-python) | [pyproject.toml:7](aloha-python/server/pyproject.toml#L7) | 13000 ✅ | 13001 ✅ | 13002 ✅ |
-| JS/TS | v0.3.4 | [a2a-js](https://github.com/a2aproject/a2a-js) | [package.json:23](aloha-js/server/package.json#L23) | 14000 ✅ | 14001 ✅ | 14002 ✅ |
-| C# | 0.3.3-preview | [a2a-dotnet](https://github.com/a2aproject/a2a-dotnet) | [Server.csproj](aloha-csharp/Server/Server.csproj) | ❌ | 15001 ✅ | 15002 ✅ |
-| Go | v0.3.7 | [a2a-go](https://github.com/a2aproject/a2a-go) | [go.mod](aloha-go/go.mod) | 12000 ✅ | 12001 ✅ | 12002 ✅ |
+| Java | v0.3.3.Final | [a2a-java](https://github.com/a2aproject/a2a-java) | [pom.xml:24](aloha-java/pom.xml#L24) | 11000 ✅ | 11001 ✅ | 11002 ✅ |
+| Go | v0.3.7 | [a2a-go](https://github.com/a2aproject/a2a-go) | [go.mod:6](aloha-go/go.mod#L6) | 12000 ✅ | 12001 ✅ | 12002 ✅ |
+| Python | v0.3.24 | [a2a-python](https://github.com/a2aproject/a2a-python) | [pyproject.toml:7](aloha-python/server/pyproject.toml#L7) | 13000 ✅ | 13001 ✅ | 13002 ✅ |
+| JS/TS | v0.3.10 | [a2a-js](https://github.com/a2aproject/a2a-js) | [package.json:23](aloha-js/server/package.json#L23) | 14000 ✅ | 14001 ✅ | 14002 ✅ |
+| C# | 0.3.3-preview | [a2a-dotnet](https://github.com/a2aproject/a2a-dotnet) | [Server.csproj:11](aloha-csharp/Server/Server.csproj#L11) | 15000 ❌ | 15001 ✅ | 15002 ✅ |
 
 <https://github.com/a2aproject>
 
@@ -35,42 +35,18 @@ Each language module includes scripts in the `scripts/` directory for convenient
 
 | Language | Server Scripts | Client Scripts |
 |----------|---------------|----------------|
-| JavaScript/TypeScript | `aloha-js/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-js/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
-| Python | `aloha-python/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-python/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
 | Java | `aloha-java/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-java/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+| Go | `aloha-go/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-go/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+| Python | `aloha-python/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-python/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+| JavaScript/TypeScript | `aloha-js/server/scripts/{grpc,jsonrpc,rest}_server.bat` | `aloha-js/client/scripts/{grpc,jsonrpc,rest}_client.bat` |
+| C# | `aloha-csharp/Server/scripts/{jsonrpc,rest}_server.bat` | `aloha-csharp/Client/scripts/{jsonrpc,rest}_client.bat` |
 
-**Example (JavaScript/TypeScript):**
-
-```bash
-# Terminal 1: Start REST Server
-aloha-js\server\scripts\rest_server.bat
-
-# Terminal 2: Run REST Client
-aloha-js\client\scripts\rest_client.bat
-```
-
-**Example (Java):**
+**Example (Python):**
 
 ```bash
 # Terminal 1: Start REST Server
-aloha-java\server\scripts\rest_server.bat
+aloha-python\server\scripts\rest_server.bat
 
 # Terminal 2: Run REST Client
-aloha-java\client\scripts\rest_client.bat
-```
-
-### Manual Startup
-
-**Python (requires uv):**
-
-```bash
-# Terminal 1: Start Server
-cd aloha-python/server
-uv sync
-uv run python agent.py
-
-# Terminal 2: Run Client
-cd aloha-python/client
-uv sync
-uv run python -m client --message "Hello A2A!"
+aloha-python\client\scripts\rest_client.bat
 ```
