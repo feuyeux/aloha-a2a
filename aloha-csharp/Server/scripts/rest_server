@@ -1,3 +1,23 @@
 #!/bin/bash
 cd "$(dirname "$0")/.."
+jsonrpc_port="${JSONRPC_PORT:-15001}"
+rest_port="${REST_PORT:-15002}"
+kill_port() {
+    local port="$1"
+    local pids=""
+
+    if command -v lsof >/dev/null 2>&1; then
+        pids="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null)"
+    elif command -v ss >/dev/null 2>&1; then
+        pids="$(ss -ltnp "sport = :$port" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u)"
+    fi
+
+    if [ -n "$pids" ]; then
+        echo "[startup] Killing process(es) on port $port: $pids"
+        kill -9 $pids >/dev/null 2>&1 || true
+    fi
+}
+
+kill_port "$jsonrpc_port"
+kill_port "$rest_port"
 dotnet run

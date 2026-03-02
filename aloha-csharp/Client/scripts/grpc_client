@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "[unsupported] gRPC is not supported in aloha-csharp (A2A .NET SDK v0.3.3-preview)."
+echo "[unsupported] Use jsonrpc_client or rest_client instead."
+exit 1

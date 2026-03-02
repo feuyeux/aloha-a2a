@@ -16,11 +16,28 @@ if (string.IsNullOrWhiteSpace(options.Message))
     return;
 }
 
-var port = options.Port ?? 15001; // Default to JSON-RPC port
+var transport = options.Transport.ToLowerInvariant();
+if (transport is not ("jsonrpc" or "rest" or "grpc"))
+{
+    Console.WriteLine($"Unsupported transport: {options.Transport}");
+    PrintUsage();
+    Environment.Exit(1);
+    return;
+}
+
+if (transport == "grpc")
+{
+    Console.WriteLine("Error: gRPC is not supported in aloha-csharp (A2A .NET SDK v0.3.3-preview).");
+    Environment.Exit(1);
+    return;
+}
+
+var port = options.Port ?? (transport == "rest" ? 15002 : 15001);
 
 Console.WriteLine("=".PadRight(60, '='));
 Console.WriteLine("A2A Host Client (SDK)");
-Console.WriteLine($"  Transport: JSON-RPC (via A2A SDK)");
+Console.WriteLine($"  Transport: {transport.ToUpperInvariant()}");
+Console.WriteLine("  SDK Mode: JSON-RPC");
 Console.WriteLine($"  Agent: {options.Host}:{port}");
 Console.WriteLine($"  Message: {options.Message}");
 Console.WriteLine($"  Streaming: {options.Stream}");
@@ -242,6 +259,10 @@ static HostCliOptions ParseArgs(string[] args)
 
         switch (arg)
         {
+            case "--transport":
+            case "-t":
+                options.Transport = NextValue(args, ref index) ?? options.Transport;
+                break;
             case "--host":
             case "-h":
                 options.Host = NextValue(args, ref index) ?? options.Host;
@@ -271,23 +292,27 @@ static HostCliOptions ParseArgs(string[] args)
 
 static void PrintUsage()
 {
-    Console.WriteLine("Usage: client --message <text> [--host <hostname>] [--port <port>] [--stream]");
+    Console.WriteLine("Usage: client --message <text> [--transport <jsonrpc|rest>] [--host <hostname>] [--port <port>] [--stream]");
     Console.WriteLine();
     Console.WriteLine("Options:");
+    Console.WriteLine("  --transport, -t  Transport protocol (jsonrpc, rest) [default: jsonrpc]");
     Console.WriteLine("  --host, -h       Agent hostname (default: localhost)");
-    Console.WriteLine("  --port, -p       Agent port (default: 15001 for JSON-RPC)");
+    Console.WriteLine("  --port, -p       Agent port (default: 15001 for jsonrpc, 15002 for rest)");
     Console.WriteLine("  --message, -m    Message to send [required]");
     Console.WriteLine("  --stream, -s     Use streaming mode");
     Console.WriteLine();
-    Console.WriteLine("The client uses the A2A SDK with JSON-RPC transport.");
+    Console.WriteLine("gRPC is not supported in the current C# SDK integration.");
+    Console.WriteLine("The client runtime uses the A2A SDK JSON-RPC mode.");
     Console.WriteLine();
     Console.WriteLine("Examples:");
     Console.WriteLine("  client --message \"Roll a 20-sided dice\"");
+    Console.WriteLine("  client --transport rest --message \"Roll a 20-sided dice\"");
     Console.WriteLine("  client --port 15001 --message \"Is 17 prime?\" --stream");
 }
 
 sealed class HostCliOptions
 {
+    public string Transport { get; set; } = "jsonrpc";
     public string Host { get; set; } = "localhost";
     public int? Port { get; set; }
     public string? Message { get; set; }
