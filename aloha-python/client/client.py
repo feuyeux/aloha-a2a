@@ -78,7 +78,13 @@ class AlohaClient:
 
     async def _init_grpc(self):
         """Initialize gRPC transport."""
-        import grpc.aio
+        try:
+            import grpc.aio
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "gRPC transport requires grpcio. Install client dependencies with "
+                "`uv sync --project client` or `pip install -e .` from aloha-python/client."
+            ) from exc
         from a2a.client.transports import GrpcTransport
         
         # For agent card, we need HTTP - use the REST port (server_url is host:port for gRPC)

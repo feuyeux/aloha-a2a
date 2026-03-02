@@ -1,8 +1,29 @@
 #!/bin/bash
 cd "$(dirname "$0")/../.."
 export TRANSPORT_MODE=jsonrpc
+jsonrpc_port="${JSONRPC_PORT:-13001}"
+kill_port() {
+    local port="$1"
+    local pids=""
+
+    if command -v lsof >/dev/null 2>&1; then
+        pids="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null)"
+    elif command -v ss >/dev/null 2>&1; then
+        pids="$(ss -ltnp "sport = :$port" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u)"
+    fi
+
+    if [ -n "$pids" ]; then
+        echo "[startup] Killing process(es) on port $port: $pids"
+        kill -9 $pids >/dev/null 2>&1 || true
+    fi
+}
+
+kill_port "$jsonrpc_port"
+
 if command -v uv &> /dev/null; then
-    uv run python -m server 2>/dev/null || python -m server
+    uv run --project server python -m server
+elif [ -x "server/.venv/bin/python" ]; then
+    server/.venv/bin/python -m server
 else
     python -m server
 fi

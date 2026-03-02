@@ -1,7 +1,9 @@
 #!/bin/bash
 cd "$(dirname "$0")/../.."
 if command -v uv &> /dev/null; then
-    uv run python -m client --transport jsonrpc --port 13001 --message "Roll a 6-sided dice" 2>/dev/null || python -m client --transport jsonrpc --port 13001 --message "Roll a 6-sided dice"
+    uv run --project client python -m client --transport jsonrpc --port 13001 --message "Roll a 6-sided dice"
+elif [ -x "client/.venv/bin/python" ]; then
+    client/.venv/bin/python -m client --transport jsonrpc --port 13001 --message "Roll a 6-sided dice"
 else
     python -m client --transport jsonrpc --port 13001 --message "Roll a 6-sided dice"
 fi

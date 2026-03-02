@@ -65,6 +65,7 @@ class DiceAgent:
         # Initialize transports
         self.transports = []
         self.servers = []
+        self._grpc_server = None
 
         logger.info("Dice Agent initialized")
 
@@ -259,9 +260,11 @@ class DiceAgent:
 
         for server in self.servers:
             server.should_exit = True
+            server.force_exit = True
 
-        if hasattr(self, "_grpc_server") and self._grpc_server:
+        if self._grpc_server:
             await self._grpc_server.stop(grace=5)
+            self._grpc_server = None
 
         logger.info("Dice Agent stopped")
 
@@ -288,10 +291,6 @@ async def main():
 
     try:
         await agent.start()
-
-        # Keep running until interrupted
-        while True:
-            await asyncio.sleep(1)
     except KeyboardInterrupt:
         logger.info("Shutdown signal received, stopping Dice Agent...")
     finally:
