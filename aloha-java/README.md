@@ -33,18 +33,14 @@ and REST (HTTP+JSON).
 ## Build
 
 ```bash
-cd aloha-java
-mvn clean install
-```
+cd aloha-java && mvn clean install
 
-Or use the build script:
+# Or use the build script:
 
-```bash
-# Bash
 cd aloha-java && ./scripts/build
 
 # PowerShell
-cd aloha-java && ./scripts/build.bat
+cd aloha-java ; ./scripts/build.bat
 ```
 
 ## Quick Start with Scripts
@@ -59,14 +55,6 @@ Convenience scripts are provided for running servers and clients:
 | `server/scripts/jsonrpc_server` | JSON-RPC | 11001 |
 | `server/scripts/rest_server` | REST | 11002 |
 
-```bash
-# Bash - Start gRPC server
-./server/scripts/grpc_server
-
-# PowerShell - Start REST server
-./server/scripts/rest_server.bat
-```
-
 ### Client Scripts
 
 | Script | Transport | Port |
@@ -74,83 +62,6 @@ Convenience scripts are provided for running servers and clients:
 | `client/scripts/grpc_client` | gRPC | 11000 |
 | `client/scripts/jsonrpc_client` | JSON-RPC | 11001 |
 | `client/scripts/rest_client` | REST | 11002 |
-
-```bash
-# Bash - Test with gRPC client
-./client/scripts/grpc_client
-
-# PowerShell - Test with REST client
-./client/scripts/rest_client.bat
-```
-
-## gRPC Transport
-
-### gRPC Server
-
-```bash
-cd server && mvn exec:exec -Dtransport.mode=grpc
-# PowerShell
-cd server ; mvn exec:exec "-Dtransport.mode=grpc"
-```
-
-**Endpoints**:
-
-- gRPC: `localhost:11000`
-- Agent Card: `http://localhost:11001/.well-known/agent-card.json`
-
-### Client
-
-```bash
-cd client && mvn exec:exec -Dexec.args="--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
-# PowerShell
-cd client; mvn exec:exec "-Dexec.args=--transport grpc --port 11000 --message 'Roll a 20-sided dice'"
-```
-
-## JSON-RPC Transport
-
-### Server
-
-```bash
-cd server && mvn exec:exec -Dtransport.mode=jsonrpc
-# PowerShell
-cd server ; mvn exec:exec "-Dtransport.mode=jsonrpc"
-```
-
-**Endpoints**:
-
-- JSON-RPC (WebSocket): `ws://localhost:11001`
-- Agent Card: `http://localhost:11001/.well-known/agent-card.json`
-
-### Client
-
-```bash
-cd client && mvn exec:exec -Dexec.args="--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
-# PowerShell
-cd client; mvn exec:exec "-Dexec.args=--transport jsonrpc --port 11001 --message 'Check if 17 is prime'"
-```
-
-## REST Transport
-
-### Server
-
-```bash
-cd server && mvn exec:exec -Dtransport.mode=rest
-# PowerShell
-cd server ; mvn exec:exec "-Dtransport.mode=rest"
-```
-
-**Endpoints**:
-
-- REST (HTTP+JSON): `http://localhost:11002`
-- Agent Card: `http://localhost:11002/.well-known/agent-card.json`
-
-### Client
-
-```bash
-cd client && mvn exec:exec -Dexec.args="--transport rest --port 11002 --message 'Check if 13 is prime'"
-# PowerShell
-cd client; mvn exec:exec "-Dexec.args=--transport rest --port 11002 --message 'Check if 13 is prime'"
-```
 
 ## Configuration
 

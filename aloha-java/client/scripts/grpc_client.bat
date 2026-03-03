@@ -1,3 +1,4 @@
 @echo off
 cd /d %~dp0..
-call mvn -q exec:exec -Dexec.mainClass="com.aloha.a2a.client.AlohaClient" "-Dexec.args=--transport grpc --port 11000 --message Roll a 6-sided dice"
+set "EXEC_ARGS=--transport grpc --port 11000 --agent-card-port 11001 --message 'Roll a 6-sided dice'"
+call mvn -q exec:java -Dexec.mainClass="com.aloha.a2a.client.AlohaClient" -Dexec.args="%EXEC_ARGS%"

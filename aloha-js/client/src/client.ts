@@ -15,6 +15,9 @@ import {
 } from '@a2a-js/sdk';
 import { A2AClient, JsonRpcTransport, RestTransport, Transport } from '@a2a-js/sdk/client';
 import { GrpcTransport } from '@a2a-js/sdk/client/grpc';
+import { getLogger } from './logger.js';
+
+const logger = getLogger('client');
 
 /**
  * A2A Client with multi-transport support (REST, JSON-RPC, gRPC).
@@ -29,14 +32,14 @@ export class AlohaClient {
     constructor(serverUrl: string, transport: string = 'rest') {
         this.serverUrl = serverUrl;
         this.transport = transport.toLowerCase();
-        console.log(`Client created for ${serverUrl} using ${this.transport} transport`);
+        logger.info(`Client created for ${serverUrl} using ${this.transport} transport`);
     }
 
     /**
      * Initialize the client by fetching agent card.
      */
     async initialize(): Promise<void> {
-        console.log(`Connecting to agent at: ${this.serverUrl}`);
+        logger.info(`Connecting to agent at: ${this.serverUrl}`);
 
         try {
             if (this.transport === 'rest') {
@@ -49,18 +52,18 @@ export class AlohaClient {
                 throw new Error(`Unsupported transport: ${this.transport}`);
             }
 
-            console.log('Successfully fetched public agent card:');
-            console.log(`  Name: ${this.agentCard!.name}`);
-            console.log(`  Description: ${this.agentCard!.description}`);
-            console.log(`  Version: ${this.agentCard!.version}`);
+            logger.info('Successfully fetched public agent card:');
+            logger.info(`  Name: ${this.agentCard!.name}`);
+            logger.info(`  Description: ${this.agentCard!.description}`);
+            logger.info(`  Version: ${this.agentCard!.version}`);
 
             if (this.agentCard!.capabilities?.streaming) {
-                console.log('  Streaming: Supported');
+                logger.info('  Streaming: Supported');
             }
 
-            console.log('Client initialized successfully');
+            logger.info('Client initialized successfully');
         } catch (error) {
-            console.error('Failed to fetch agent card:', error);
+            logger.error(`Failed to fetch agent card: ${error}`);
             throw error;
         }
     }
@@ -110,7 +113,7 @@ export class AlohaClient {
         const restPort = grpcPort + 2;
         const cardUrl = `http://${host}:${restPort}/.well-known/agent-card.json`;
         
-        console.log(`Fetching agent card from: ${cardUrl}`);
+        logger.info(`Fetching agent card from: ${cardUrl}`);
         const response = await fetch(cardUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch agent card: ${response.status}`);
@@ -131,7 +134,7 @@ export class AlohaClient {
      * @returns The agent's response
      */
     async sendMessage(messageText: string, contextId?: string): Promise<string> {
-        console.log(`Sending message: ${messageText}`);
+        logger.info(`Sending message: ${messageText}`);
 
         // Create the message
         const message: Message = {
@@ -174,10 +177,10 @@ export class AlohaClient {
 
             // Return combined response
             const finalText = responseTexts.join('');
-            console.log(`Final response: ${finalText}`);
+            logger.info(`Final response length: ${finalText.length}`);
             return finalText;
         } catch (error) {
-            console.error('Error sending message:', error);
+            logger.error(`Error sending message: ${error}`);
             throw error;
         }
     }
@@ -188,7 +191,7 @@ export class AlohaClient {
     private _processStreamEvent(event: any, responseTexts: string[]): void {
         if (event.kind === 'status-update') {
             const statusUpdate = event as TaskStatusUpdateEvent;
-            console.log(`Received status update: ${statusUpdate.status.state}`);
+            logger.info(`Received status update: ${statusUpdate.status.state}`);
 
             // Extract text from status message if available
             if (statusUpdate.status.message) {
@@ -200,11 +203,11 @@ export class AlohaClient {
 
             // Check if this is the final update
             if (statusUpdate.final) {
-                console.log('Received final status update');
+                logger.info('Received final status update');
             }
         } else if (event.kind === 'artifact-update') {
             const artifactUpdate = event as TaskArtifactUpdateEvent;
-            console.log(`Received artifact: ${artifactUpdate.artifact.name || '(unnamed)'}`);
+            logger.info(`Received artifact: ${artifactUpdate.artifact.name || '(unnamed)'}`);
 
             // Extract text from artifact parts
             const text = this._extractTextFromParts(artifactUpdate.artifact.parts);
@@ -213,7 +216,7 @@ export class AlohaClient {
             }
         } else if (event.kind === 'message') {
             const msg = event as Message;
-            console.log('Received message event');
+            logger.info('Received message event');
 
             // Extract text from message parts
             const text = this._extractTextFromParts(msg.parts);
@@ -222,7 +225,7 @@ export class AlohaClient {
             }
         } else if (event.kind === 'task') {
             const task = event as Task;
-            console.log(`Received task event: ${task.id}, status: ${task.status.state}`);
+            logger.info(`Received task event: ${task.id}, status: ${task.status.state}`);
 
             // Check if task is completed
             if (task.status.state === 'completed' || task.status.state === 'failed' || task.status.state === 'canceled') {
@@ -304,8 +307,8 @@ export class AlohaClient {
      * Clean up client resources.
      */
     async close(): Promise<void> {
-        console.log('Cleaning up resources...');
+        logger.info('Cleaning up resources...');
         // The A2AClient doesn't have an explicit close method in the current SDK
-        console.log('Resource cleanup completed');
+        logger.info('Resource cleanup completed');
     }
 }

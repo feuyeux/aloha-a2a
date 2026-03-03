@@ -119,7 +119,7 @@ public class DiceAgentExecutor {
                 }
 
                 // Call the dice agent
-                logger.info("Invoking agent.rollAndAnswer");
+                logger.info("Invoking LLM with tools");
                 String response;
                 try {
                     response = agent.rollAndAnswer(messageText);
@@ -136,9 +136,9 @@ public class DiceAgentExecutor {
                     throw new JSONRPCError(-32603, "LLM processing failed: " + e.getMessage(), ERROR_CODE_INTERNAL_ERROR);
                 }
 
-                logger.info("Agent returned response length={}",
+                logger.info("LLM returned response length={}",
                         response == null ? 0 : response.length());
-                logger.debug("Agent response content: {}", response);
+                logger.debug("LLM response content: {}", response);
 
                 // Create response part
                 TextPart responsePart = new TextPart(Objects.requireNonNull(response), null);

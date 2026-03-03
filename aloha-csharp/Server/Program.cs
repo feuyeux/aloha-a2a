@@ -4,6 +4,23 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Determine log file path
+var logDir = Environment.GetEnvironmentVariable("ALOHA_LOG_DIR") ?? @"D:\coding\aloha-a2a\aloha-log";
+Directory.CreateDirectory(logDir);
+var logFilePath = Path.Combine(logDir, "csharp-server.log");
+
+// Configure logging format to match unified pattern: TIMESTAMP - COMPONENT - LEVEL - message
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss,fff ";
+    options.SingleLine = true;
+    options.IncludeScopes = false;
+});
+
+// Add file logging via a StreamWriter-based provider
+builder.Logging.AddProvider(new FileLoggerProvider(logFilePath));
+
 var jsonrpcPort = builder.Configuration.GetValue<int>("Ports:JsonRpc", 15001);
 var restPort = builder.Configuration.GetValue<int>("Ports:Rest", 15002);
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -31,10 +30,7 @@ When asked to roll a dice and check if the result is prime:
 Always use the tools - never try to roll dice or check primes yourself.
 Be conversational and friendly in your responses.
 
-你是一个骰子代理，可以投掷任意面数的骰子并检查数字是否为质数。
-当被要求投掷骰子时，使用 roll_dice 工具。
-当被要求检查质数时，使用 check_prime 工具。
-始终使用工具，不要自己计算。`
+你是一个骰子代理，可以投掷任意面数的骰子并检查数字是否为质数�?当被要求投掷骰子时，使用 roll_dice 工具�?当被要求检查质数时，使�?check_prime 工具�?始终使用工具，不要自己计算。`
 
 // ValidationError represents a request validation error
 type ValidationError struct {
@@ -54,6 +50,7 @@ type DiceAgentExecutor struct {
 	ollamaModel  string
 	baseURL      string
 	useLLM       bool
+	logger       *Logger
 }
 
 // NewDiceAgentExecutor creates a new executor instance
@@ -72,13 +69,14 @@ func NewDiceAgentExecutor() *DiceAgentExecutor {
 		baseURL:     baseURL,
 		ollamaModel: model,
 		useLLM:      true,
+		logger:      NewLogger("server.executor"),
 	}
 
 	// Try to create Ollama client
 	client, err := api.ClientFromEnvironment()
 	if err != nil {
-		log.Printf("Warning: Failed to create Ollama client: %v", err)
-		log.Printf("Will use fallback pattern matching instead")
+		executor.logger.Warn("Failed to create Ollama client: %v", err)
+		executor.logger.Warn("Will use fallback pattern matching instead")
 		executor.useLLM = false
 		return executor
 	}
@@ -87,19 +85,19 @@ func NewDiceAgentExecutor() *DiceAgentExecutor {
 
 	// Validate Ollama connection
 	if err := executor.validateOllamaConnection(); err != nil {
-		log.Printf("Warning: Ollama connection validation failed: %v", err)
-		log.Printf("Please ensure Ollama is installed and running:")
-		log.Printf("  1. Install Ollama: https://ollama.ai/download")
-		log.Printf("  2. Pull %s model: ollama pull %s", model, model)
-		log.Printf("  3. Start Ollama service: ollama serve")
-		log.Printf("Will use fallback pattern matching instead")
+		executor.logger.Warn("Ollama connection validation failed: %v", err)
+		executor.logger.Warn("Please ensure Ollama is installed and running:")
+		executor.logger.Warn("  1. Install Ollama: https://ollama.ai/download")
+		executor.logger.Warn("  2. Pull %s model: ollama pull %s", model, model)
+		executor.logger.Warn("  3. Start Ollama service: ollama serve")
+		executor.logger.Warn("Will use fallback pattern matching instead")
 		executor.useLLM = false
 		return executor
 	}
 
-	log.Printf("Ollama client initialized successfully")
-	log.Printf("  Base URL: %s", baseURL)
-	log.Printf("  Model: %s", model)
+	executor.logger.Info("Successfully connected to Ollama")
+	executor.logger.Info("  Base URL: %s", baseURL)
+	executor.logger.Info("  Using model: %s", model)
 
 	return executor
 }
@@ -201,14 +199,14 @@ func (e *DiceAgentExecutor) processWithLLM(ctx context.Context, messageText stri
 	}
 
 	if len(toolCalls) > 0 {
-		log.Printf("LLM requested %d tool call(s)", len(toolCalls))
+		e.logger.Info("LLM requested %d tool call(s)", len(toolCalls))
 
 		for _, toolCall := range toolCalls {
-			log.Printf("Executing tool: %s", toolCall.Function.Name)
+			e.logger.Info("Executing tool: %s", toolCall.Function.Name)
 
 			toolResult, err := e.executeTool(toolCall.Function.Name, toolCall.Function.Arguments.ToMap())
 			if err != nil {
-				log.Printf("Tool execution error: %v", err)
+				e.logger.Error("Tool execution error: %v", err)
 				return "", fmt.Errorf("tool execution failed: %w", err)
 			}
 
@@ -299,14 +297,14 @@ func (e *DiceAgentExecutor) executeTool(toolName string, argsJSON map[string]int
 // Execute implements a2asrv.AgentExecutor - processes request and writes A2A events to queue.
 func (e *DiceAgentExecutor) Execute(ctx context.Context, reqCtx *a2asrv.RequestContext, queue eventqueue.Queue) error {
 	taskID := reqCtx.TaskID
-	log.Printf("Received new request. taskId=%s", taskID)
+	e.logger.Info("Received new request. taskId=%s", taskID)
 
 	// Extract text from the incoming message
 	messageText := extractTextFromA2AMessage(reqCtx.Message)
-	log.Printf("Extracted message text: %s", messageText)
+	e.logger.Debug("Extracted message text: %s", messageText)
 
 	if strings.TrimSpace(messageText) == "" {
-		log.Printf("Empty message text received")
+		e.logger.Warn("Empty message text received")
 		return e.writeFailedStatus(ctx, reqCtx, queue, "Error: Empty message received. Please provide a message.")
 	}
 
@@ -323,17 +321,17 @@ func (e *DiceAgentExecutor) Execute(ctx context.Context, reqCtx *a2asrv.RequestC
 	if err := queue.Write(ctx, event); err != nil {
 		return fmt.Errorf("failed to write state working: %w", err)
 	}
-	log.Printf("Task started working: %s", taskID)
+	e.logger.Info("Task started working: %s", taskID)
 
 	// Process the message
 	response, err := e.processMessage(ctx, messageText)
 	if err != nil {
-		log.Printf("Error processing message: %v", err)
+		e.logger.Error("Error processing message: %v", err)
 		return e.writeFailedStatus(ctx, reqCtx, queue, fmt.Sprintf("Error processing your request: %s", err.Error()))
 	}
 
-	log.Printf("Generated response length=%d", len(response))
-	log.Printf("Response content: %s", response)
+	e.logger.Info("LLM returned response length=%d", len(response))
+	e.logger.Debug("Response content: %s", response)
 
 	// Write artifact with the response
 	artifactEvent := a2a.NewArtifactEvent(reqCtx, a2a.TextPart{Text: response})
@@ -348,13 +346,13 @@ func (e *DiceAgentExecutor) Execute(ctx context.Context, reqCtx *a2asrv.RequestC
 		return fmt.Errorf("failed to write state completed: %w", err)
 	}
 
-	log.Printf("Task completed successfully: %s", taskID)
+	e.logger.Info("Task completed successfully: %s", taskID)
 	return nil
 }
 
 // Cancel implements a2asrv.AgentExecutor - cancels an ongoing task.
 func (e *DiceAgentExecutor) Cancel(ctx context.Context, reqCtx *a2asrv.RequestContext, queue eventqueue.Queue) error {
-	log.Printf("Cancel requested for task: %s", reqCtx.TaskID)
+	e.logger.Info("Cancel requested for task: %s", reqCtx.TaskID)
 
 	cancelEvent := a2a.NewStatusUpdateEvent(reqCtx, a2a.TaskStateCanceled, nil)
 	cancelEvent.Final = true
@@ -362,7 +360,7 @@ func (e *DiceAgentExecutor) Cancel(ctx context.Context, reqCtx *a2asrv.RequestCo
 		return fmt.Errorf("failed to write cancel event: %w", err)
 	}
 
-	log.Printf("Task cancelled successfully: %s", reqCtx.TaskID)
+	e.logger.Info("Task cancelled successfully: %s", reqCtx.TaskID)
 	return nil
 }
 
@@ -380,17 +378,17 @@ func (e *DiceAgentExecutor) writeFailedStatus(ctx context.Context, reqCtx *a2asr
 // processMessage processes the user message and generates a response
 func (e *DiceAgentExecutor) processMessage(ctx context.Context, messageText string) (string, error) {
 	if e.useLLM && e.ollamaClient != nil {
-		log.Printf("Processing message with Ollama LLM")
+		e.logger.Info("Invoking LLM with tools")
 		response, err := e.processWithLLM(ctx, messageText)
 		if err != nil {
-			log.Printf("LLM processing failed: %v, falling back to pattern matching", err)
+			e.logger.Warn("LLM processing failed: %v, falling back to pattern matching", err)
 		} else {
 			return response, nil
 		}
 	}
 
 	// Fallback to pattern matching
-	log.Printf("Processing message with pattern matching (fallback)")
+	e.logger.Info("Processing message with pattern matching (fallback)")
 	messageLower := strings.ToLower(messageText)
 
 	if strings.Contains(messageLower, "roll") && strings.Contains(messageLower, "dice") {

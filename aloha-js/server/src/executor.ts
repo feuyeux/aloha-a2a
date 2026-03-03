@@ -4,6 +4,9 @@
 
 import { Ollama } from 'ollama';
 import { rollDice, checkPrime } from './tools.js';
+import { getLogger } from './logger.js';
+
+const logger = getLogger('server.executor');
 
 /**
  * System prompt for the agent
@@ -90,20 +93,20 @@ export class DiceAgentExecutor {
     private _setupLLM(): void {
         try {
             this.client = new Ollama({ host: this.baseUrl });
-            console.log(`Ollama client initialized with base URL: ${this.baseUrl}, model: ${this.model}`);
+            logger.info(`Ollama client initialized with base URL: ${this.baseUrl}, model: ${this.model}`);
             
             // Validate connection on startup
             this._validateConnection().catch((error) => {
-                console.warn('Ollama connection validation failed:', error.message);
-                console.warn('Agent will use fallback mode. Please ensure Ollama is running:');
-                console.warn('  1. Install Ollama: https://ollama.ai/download');
-                console.warn(`  2. Pull model: ollama pull ${this.model}`);
-                console.warn('  3. Start Ollama: ollama serve');
+                logger.warn(`Ollama connection validation failed: ${error.message}`);
+                logger.warn('Agent will use fallback mode. Please ensure Ollama is running:');
+                logger.warn('  1. Install Ollama: https://ollama.ai/download');
+                logger.warn(`  2. Pull model: ollama pull ${this.model}`);
+                logger.warn('  3. Start Ollama: ollama serve');
                 this.client = null;
             });
         } catch (error: any) {
-            console.warn('Failed to initialize Ollama client:', error.message);
-            console.warn('Agent will use fallback mode');
+            logger.warn(`Failed to initialize Ollama client: ${error.message}`);
+            logger.warn('Agent will use fallback mode');
             this.client = null;
         }
     }
@@ -128,7 +131,7 @@ export class DiceAgentExecutor {
                 );
             }
             
-            console.log(`Ollama connection validated. Model '${this.model}' is available.`);
+            logger.info(`Ollama connection validated. Model '${this.model}' is available.`);
         } catch (error: any) {
             throw new Error(
                 `Failed to connect to Ollama at ${this.baseUrl}: ${error.message}. ` +
@@ -144,7 +147,7 @@ export class DiceAgentExecutor {
      * @returns The agent's response
      */
     async execute(messageText: string): Promise<string> {
-        console.log(`Processing message: ${messageText}`);
+        logger.info(`Processing message: ${messageText}`);
 
         try {
             if (!this.client) {
@@ -154,14 +157,14 @@ export class DiceAgentExecutor {
 
             // Process with LLM
             const response = await this._processWithLLM(messageText);
-            console.log(`LLM returned response: ${response}`);
+            logger.info(`LLM returned response: ${response}`);
             return response;
         } catch (error: any) {
-            console.error('Error during execution:', error);
+            logger.error(`Error during execution: ${error}`);
             
             // If Ollama fails, try fallback
             if (error.message.includes('Ollama') || error.message.includes('ECONNREFUSED')) {
-                console.warn('Ollama unavailable, using fallback mode');
+                logger.warn('Ollama unavailable, using fallback mode');
                 return this._fallbackProcessing(messageText);
             }
             
@@ -201,7 +204,7 @@ export class DiceAgentExecutor {
 
                 // Check if tools were called
                 if (response.message.tool_calls && response.message.tool_calls.length > 0) {
-                    console.log(`LLM requested ${response.message.tool_calls.length} tool call(s) in iteration ${iteration}`);
+                    logger.info(`LLM requested ${response.message.tool_calls.length} tool call(s) in iteration ${iteration}`);
                     
                     // Add the assistant's message with tool calls
                     messages.push(response.message);
@@ -224,10 +227,10 @@ export class DiceAgentExecutor {
             }
 
             // Max iterations reached
-            console.warn('Max tool call iterations reached');
+            logger.warn('Max tool call iterations reached');
             return 'I processed your request but reached the maximum number of tool calls.';
         } catch (error: any) {
-            console.error('Error processing with LLM:', error);
+            logger.error(`Error processing with LLM: ${error}`);
             throw new Error(`Ollama processing failed: ${error.message}`);
         }
     }
@@ -248,7 +251,7 @@ export class DiceAgentExecutor {
                 throw new Error('Invalid tool arguments: expected an object');
             }
 
-            console.log(`Executing tool: ${functionName} with args:`, args);
+            logger.info(`Executing tool: ${functionName} with args: ${JSON.stringify(args)}`);
 
             switch (functionName) {
                 case 'rollDice': {
@@ -273,7 +276,7 @@ export class DiceAgentExecutor {
                     throw new Error(`Unknown tool: ${functionName}`);
             }
         } catch (error: any) {
-            console.error(`Tool execution error for ${functionName}:`, error);
+            logger.error(`Tool execution error for ${functionName}: ${error}`);
             return { error: error.message };
         }
     }

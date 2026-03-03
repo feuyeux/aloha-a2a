@@ -5,6 +5,9 @@
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import { AlohaClient } from './client.js';
+import { getLogger, initLogFile } from './logger.js';
+
+const logger = getLogger('client.main');
 
 // Load environment variables
 dotenv.config();
@@ -64,12 +67,15 @@ async function main() {
         serverUrl = `http://${options.host}:${port}`;
     }
 
-    console.log('='.repeat(60));
-    console.log('A2A Host Client');
-    console.log('='.repeat(60));
-    console.log(`Transport: ${transport}`);
-    console.log(`Server URL: ${serverUrl}`);
-    console.log('='.repeat(60));
+    // Initialize log file output
+    initLogFile(transport);
+
+    logger.info('='.repeat(60));
+    logger.info('A2A Host Client');
+    logger.info('='.repeat(60));
+    logger.info(`Transport: ${transport}`);
+    logger.info(`Server URL: ${serverUrl}`);
+    logger.info('='.repeat(60));
     console.log('');
 
     try {
@@ -79,12 +85,12 @@ async function main() {
 
         if (options.probe) {
             const capabilities = await client.probeTransports();
-            console.log('');
-            console.log('='.repeat(60));
-            console.log('Transport Capabilities:');
-            console.log('='.repeat(60));
-            console.log(JSON.stringify(capabilities, null, 2));
-            console.log('='.repeat(60));
+            logger.info('');
+            logger.info('='.repeat(60));
+            logger.info('Transport Capabilities:');
+            logger.info('='.repeat(60));
+            logger.info(JSON.stringify(capabilities, null, 2));
+            logger.info('='.repeat(60));
             await client.close();
             return;
         }
@@ -94,7 +100,7 @@ async function main() {
         // Check if message was provided
         if (options.message) {
             // Send single message
-            console.log('Sending message...');
+            logger.info('Sending message...');
             const response = await client.sendMessage(options.message, options.context);
 
             console.log('');
@@ -117,26 +123,25 @@ async function main() {
             process.exit(0);
         }
     } catch (error) {
-        console.error('');
-        console.error('Error:', error);
+        logger.error(`Error: ${error}`);
         process.exit(1);
     }
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-    console.log('\nReceived interrupt signal, shutting down...');
+    logger.info('Received interrupt signal, shutting down...');
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('\nReceived termination signal, shutting down...');
+    logger.info('Received termination signal, shutting down...');
     process.exit(0);
 });
 
 // Start the client
 main().catch((error) => {
-    console.error('Fatal error:', error);
+    logger.error(`Fatal error: ${error}`);
     process.exit(1);
 });
 

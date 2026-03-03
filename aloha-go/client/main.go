@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+var clientLogger = NewLogger("client")
+
 func main() {
 	// Parse command-line flags
 	transport := flag.String("transport", "jsonrpc", "Transport protocol to use (jsonrpc, grpc, rest)")
@@ -27,6 +29,9 @@ func main() {
 	cardURL := flag.String("card-url", "", "Agent card URL (auto-resolved if empty)")
 
 	flag.Parse()
+
+	// Initialize log file output
+	InitLogFile(*transport)
 
 	// Validate message
 	if *message == "" {
@@ -60,17 +65,17 @@ func main() {
 		case "rest":
 			*port = 12002
 		default:
-			log.Fatalf("Unsupported transport: %s (use jsonrpc, grpc, or rest)", *transport)
+			clientLogger.Fatal("Unsupported transport: %s (use jsonrpc, grpc, or rest)", *transport)
 		}
 	}
 
-	log.Println("============================================================")
-	log.Println("A2A Host Client (SDK)")
-	log.Printf("  Transport: %s", *transport)
-	log.Printf("  Host: %s:%d", *host, *port)
-	log.Printf("  Streaming: %v", *stream)
-	log.Printf("  Message: %s", *message)
-	log.Println("============================================================")
+	clientLogger.Info("============================================================")
+	clientLogger.Info("A2A Host Client (SDK)")
+	clientLogger.Info("  Transport: %s", *transport)
+	clientLogger.Info("  Host: %s:%d", *host, *port)
+	clientLogger.Info("  Streaming: %v", *stream)
+	clientLogger.Info("  Message: %s", *message)
+	clientLogger.Info("============================================================")
 
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -96,18 +101,18 @@ func main() {
 	case "rest":
 		restClient, err = createRESTClient(ctx, serverURL, *cardURL)
 		if err == nil {
-			log.Printf("Connected to agent: %s (v%s)", restClient.agentCard.Name, restClient.agentCard.Version)
-			log.Printf("  Skills: %d", len(restClient.agentCard.Skills))
+			clientLogger.Info("Connected to agent: %s (v%s)", restClient.agentCard.Name, restClient.agentCard.Version)
+			clientLogger.Info("  Skills: %d", len(restClient.agentCard.Skills))
 			for _, skill := range restClient.agentCard.Skills {
-				log.Printf("    - %s: %s", skill.Name, skill.Description)
+				clientLogger.Info("    - %s: %s", skill.Name, skill.Description)
 			}
 		}
 	default:
-		log.Fatalf("Unsupported transport: %s", *transport)
+		clientLogger.Fatal("Unsupported transport: %s", *transport)
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to create client: %v", err)
+		clientLogger.Fatal("Failed to create client: %v", err)
 	}
 
 	if client != nil {
@@ -115,12 +120,12 @@ func main() {
 		// Fetch and display agent card
 		card, err := client.GetAgentCard(ctx)
 		if err != nil {
-			log.Printf("Warning: could not fetch agent card: %v", err)
+			clientLogger.Warn("Could not fetch agent card: %v", err)
 		} else {
-			log.Printf("Connected to agent: %s (v%s)", card.Name, card.Version)
-			log.Printf("  Skills: %d", len(card.Skills))
+			clientLogger.Info("Connected to agent: %s (v%s)", card.Name, card.Version)
+			clientLogger.Info("  Skills: %d", len(card.Skills))
 			for _, skill := range card.Skills {
-				log.Printf("    - %s: %s", skill.Name, skill.Description)
+				clientLogger.Info("    - %s: %s", skill.Name, skill.Description)
 			}
 		}
 	}
@@ -172,17 +177,17 @@ func createJSONRPCClient(ctx context.Context, host string, port int, cardURL str
 
 // createRESTClient creates a client using REST transport
 func createRESTClient(ctx context.Context, serverURL, cardURL string) (*RESTClient, error) {
-	log.Printf("Resolving agent card from: %s", cardURL)
+	clientLogger.Info("Resolving agent card from: %s", cardURL)
 	return NewRESTClient(ctx, serverURL, cardURL)
 }
 
 // sendRESTMessage sends a non-streaming message using REST transport
 func sendRESTMessage(ctx context.Context, client *RESTClient, params *a2a.MessageSendParams) {
-	log.Println("Sending message (non-streaming)...")
+	clientLogger.Info("Sending message (non-streaming)...")
 
 	result, err := client.SendMessage(ctx, params)
 	if err != nil {
-		log.Fatalf("Failed to send message: %v", err)
+		clientLogger.Fatal("Failed to send message: %v", err)
 	}
 
 	fmt.Println("\n============================================================")
@@ -208,7 +213,7 @@ func sendRESTMessage(ctx context.Context, client *RESTClient, params *a2a.Messag
 
 // sendRESTStreamingMessage sends a streaming message using REST transport
 func sendRESTStreamingMessage(ctx context.Context, client *RESTClient, params *a2a.MessageSendParams) {
-	log.Println("Sending message (streaming)...")
+	clientLogger.Info("Sending message (streaming)...")
 
 	fmt.Println("\n============================================================")
 	fmt.Println("Agent Response (Streaming):")
@@ -227,7 +232,7 @@ func sendRESTStreamingMessage(ctx context.Context, client *RESTClient, params *a
 				fmt.Println("[Final event]")
 			}
 		case error:
-			log.Fatalf("Stream error: %v", e)
+			clientLogger.Fatal("Stream error: %v", e)
 		default:
 			fmt.Printf("[Event] %v\n", event)
 		}
@@ -242,7 +247,7 @@ func resolveAgentCard(ctx context.Context, host string, port int, cardURL string
 		cardURL = fmt.Sprintf("http://%s:%d", host, port)
 	}
 
-	log.Printf("Resolving agent card from: %s", cardURL)
+	clientLogger.Info("Resolving agent card from: %s", cardURL)
 
 	card, err := agentcard.DefaultResolver.Resolve(ctx, cardURL)
 	if err != nil {
@@ -254,11 +259,11 @@ func resolveAgentCard(ctx context.Context, host string, port int, cardURL string
 
 // sendMessage sends a non-streaming message and displays the result
 func sendMessage(ctx context.Context, client *a2aclient.Client, params *a2a.MessageSendParams) {
-	log.Println("Sending message (non-streaming)...")
+	clientLogger.Info("Sending message (non-streaming)...")
 
 	result, err := client.SendMessage(ctx, params)
 	if err != nil {
-		log.Fatalf("Failed to send message: %v", err)
+		clientLogger.Fatal("Failed to send message: %v", err)
 	}
 
 	fmt.Println("\n============================================================")
@@ -290,7 +295,7 @@ func sendMessage(ctx context.Context, client *a2aclient.Client, params *a2a.Mess
 
 // sendStreamingMessage sends a streaming message and displays events as they arrive
 func sendStreamingMessage(ctx context.Context, client *a2aclient.Client, params *a2a.MessageSendParams) {
-	log.Println("Sending message (streaming)...")
+	clientLogger.Info("Sending message (streaming)...")
 
 	fmt.Println("\n============================================================")
 	fmt.Println("Agent Response (Streaming):")

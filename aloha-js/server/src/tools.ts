@@ -2,6 +2,10 @@
  * Tools available to the Dice Agent.
  */
 
+import { getLogger } from './logger.js';
+
+const logger = getLogger('server.tools');
+
 /**
  * Rolls an N-sided dice and returns the result.
  * 
@@ -15,7 +19,7 @@ export function rollDice(sides: number): number {
     }
 
     const result = Math.floor(Math.random() * sides) + 1;
-    console.log(`Rolled ${sides}-sided dice: ${result}`);
+    logger.info(`Rolled ${sides}-sided dice: ${result}`);
     return result;
 }
 
@@ -33,12 +37,12 @@ export function checkPrime(numbers: number[]): string {
     const primes = numbers.filter(n => isPrime(n));
 
     if (primes.length === 0) {
-        console.log(`No prime numbers found in: ${numbers}`);
+        logger.info(`No prime numbers found in: ${numbers}`);
         return 'None of the numbers are prime.';
     }
 
     const result = `${primes.join(', ')} are prime numbers.`;
-    console.log(`Prime check for ${numbers}: ${result}`);
+    logger.info(`Prime check for ${numbers}: ${result}`);
     return result;
 }
 

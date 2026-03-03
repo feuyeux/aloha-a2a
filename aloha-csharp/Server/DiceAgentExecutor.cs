@@ -17,6 +17,7 @@ public class DiceAgentExecutor
 
     public DiceAgentExecutor(
         ILogger<DiceAgentExecutor> logger,
+        ILoggerFactory loggerFactory,
         IConfiguration configuration)
     {
         _logger = logger;
@@ -51,7 +52,7 @@ public class DiceAgentExecutor
 #pragma warning restore SKEXP0010
 
             // Add tools plugin
-            builder.Plugins.AddFromObject(new Tools(), "DiceTools");
+            builder.Plugins.AddFromObject(new Tools(loggerFactory.CreateLogger<Tools>()), "DiceTools");
 
             _kernel = builder.Build();
             _chatService = _kernel.GetRequiredService<IChatCompletionService>();

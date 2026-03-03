@@ -8,6 +8,11 @@ import io.a2a.server.agentexecution.AgentExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 /**
  * Application entry point for the Dice Agent.
  * <p>
@@ -28,6 +33,11 @@ public class AlohaServer {
     private static final Logger logger = LoggerFactory.getLogger(AlohaServer.class);
 
     public static void main(String[] args) {
+        // Initialize file logging early (before heavy logger usage)
+        // Read transport mode early so we can name the log file
+        String earlyMode = System.getProperty("transport.mode", "grpc").toLowerCase();
+        initLogFile("java-server-" + earlyMode);
+
         logger.info("============================================================");
         logger.info("=== Dice Agent starting ===");
         logger.info("============================================================");
@@ -198,5 +208,62 @@ public class AlohaServer {
         }, "parent-watchdog");
         watchdog.setDaemon(true);
         watchdog.start();
+    }
+
+    /**
+     * Set up file logging by teeing System.err to a log file.
+     * SLF4J SimpleLogger writes to System.err by default, so this captures all log output.
+     */
+    private static void initLogFile(String name) {
+        String logDir = System.getProperty("aloha.log.dir",
+                System.getenv().getOrDefault("ALOHA_LOG_DIR", "D:\\coding\\aloha-a2a\\aloha-log"));
+        try {
+            Path dir = Paths.get(logDir);
+            Files.createDirectories(dir);
+            Path logFile = dir.resolve(name + ".log");
+            FileOutputStream fos = new FileOutputStream(logFile.toFile(), true);
+            PrintStream tee = new PrintStream(new TeeOutputStream(System.err, fos), true);
+            System.setErr(tee);
+            logger.info("Log file: {}", logFile);
+        } catch (IOException e) {
+            System.err.println("WARNING: failed to open log file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * OutputStream that writes to two underlying streams simultaneously.
+     */
+    private static class TeeOutputStream extends OutputStream {
+        private final OutputStream out1;
+        private final OutputStream out2;
+
+        TeeOutputStream(OutputStream out1, OutputStream out2) {
+            this.out1 = out1;
+            this.out2 = out2;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            out1.write(b);
+            out2.write(b);
+        }
+
+        @Override
+        public void write(byte[] buf, int off, int len) throws IOException {
+            out1.write(buf, off, len);
+            out2.write(buf, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            out1.flush();
+            out2.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            try { out1.flush(); } catch (IOException ignored) {}
+            try { out2.close(); } catch (IOException ignored) {}
+        }
     }
 }

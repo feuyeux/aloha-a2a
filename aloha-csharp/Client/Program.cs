@@ -10,7 +10,7 @@ if (options.ShowHelp)
 
 if (string.IsNullOrWhiteSpace(options.Message))
 {
-    Console.WriteLine("--message is required.");
+    Log.Error("client", "--message is required.");
     PrintUsage();
     Environment.Exit(1);
     return;
@@ -19,7 +19,7 @@ if (string.IsNullOrWhiteSpace(options.Message))
 var transport = options.Transport.ToLowerInvariant();
 if (transport is not ("jsonrpc" or "rest" or "grpc"))
 {
-    Console.WriteLine($"Unsupported transport: {options.Transport}");
+    Log.Error("client", $"Unsupported transport: {options.Transport}");
     PrintUsage();
     Environment.Exit(1);
     return;
@@ -27,42 +27,43 @@ if (transport is not ("jsonrpc" or "rest" or "grpc"))
 
 if (transport == "grpc")
 {
-    Console.WriteLine("Error: gRPC is not supported in aloha-csharp (A2A .NET SDK v0.3.3-preview).");
+    Log.Error("client", "gRPC is not supported in aloha-csharp (A2A .NET SDK v0.3.3-preview).");
     Environment.Exit(1);
     return;
 }
 
 var port = options.Port ?? (transport == "rest" ? 15002 : 15001);
 
-Console.WriteLine("=".PadRight(60, '='));
-Console.WriteLine("A2A Host Client (SDK)");
-Console.WriteLine($"  Transport: {transport.ToUpperInvariant()}");
-Console.WriteLine("  SDK Mode: JSON-RPC");
-Console.WriteLine($"  Agent: {options.Host}:{port}");
-Console.WriteLine($"  Message: {options.Message}");
-Console.WriteLine($"  Streaming: {options.Stream}");
-Console.WriteLine("=".PadRight(60, '='));
-Console.WriteLine();
+// Initialize log file output
+Log.InitLogFile(transport);
+
+Log.Info("client", "============================================================");
+Log.Info("client", "A2A Host Client (SDK)");
+Log.Info("client", $"  Transport: {transport.ToUpperInvariant()}");
+Log.Info("client", "  SDK Mode: JSON-RPC");
+Log.Info("client", $"  Agent: {options.Host}:{port}");
+Log.Info("client", $"  Message: {options.Message}");
+Log.Info("client", $"  Streaming: {options.Stream}");
+Log.Info("client", "============================================================");
 
 try
 {
     var baseUrl = new Uri($"http://{options.Host}:{port}");
 
     // Resolve agent card
-    Console.WriteLine("Resolving agent card...");
+    Log.Info("client", "Resolving agent card...");
     var cardResolver = new A2ACardResolver(baseUrl);
     var card = await cardResolver.GetAgentCardAsync();
-    Console.WriteLine($"Agent: {card.Name} v{card.Version}");
-    Console.WriteLine($"Description: {card.Description}");
+    Log.Info("client", $"Agent: {card.Name} v{card.Version}");
+    Log.Info("client", $"Description: {card.Description}");
     if (card.Skills != null)
     {
-        Console.WriteLine($"Skills: {card.Skills.Count}");
+        Log.Info("client", $"Skills: {card.Skills.Count}");
         foreach (var skill in card.Skills)
         {
-            Console.WriteLine($"  - {skill.Name}: {skill.Description}");
+            Log.Info("client", $"  - {skill.Name}: {skill.Description}");
         }
     }
-    Console.WriteLine();
 
     // Create A2A client (uses JSON-RPC internally)
     var client = new A2AClient(new Uri(card.Url));
@@ -91,14 +92,13 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Error: {ex.Message}");
+    Log.Error("client", $"Error: {ex.Message}");
     Environment.Exit(1);
 }
 
 static async Task HandleNonStreaming(A2AClient client, MessageSendParams sendParams)
 {
-    Console.WriteLine("Sending message (non-streaming)...");
-    Console.WriteLine();
+    Log.Info("client", "Sending message (non-streaming)...");
 
     var response = await client.SendMessageAsync(sendParams);
 
@@ -140,8 +140,7 @@ static async Task HandleNonStreaming(A2AClient client, MessageSendParams sendPar
 
 static async Task HandleStreaming(A2AClient client, MessageSendParams sendParams)
 {
-    Console.WriteLine("Sending message (streaming)...");
-    Console.WriteLine();
+    Log.Info("client", "Sending message (streaming)...");
 
     Console.WriteLine("=".PadRight(60, '='));
     Console.WriteLine("Agent Response (Streaming):");
@@ -318,4 +317,39 @@ sealed class HostCliOptions
     public string? Message { get; set; }
     public bool Stream { get; set; }
     public bool ShowHelp { get; set; }
+}
+
+// Simple logger helper for consistent log format: TIMESTAMP - COMPONENT - LEVEL - message
+// Outputs to both stderr and log file under aloha-log/
+static class Log
+{
+    private static StreamWriter? _writer;
+
+    public static void InitLogFile(string transport)
+    {
+        try
+        {
+            var logDir = Environment.GetEnvironmentVariable("ALOHA_LOG_DIR") ?? @"D:\coding\aloha-a2a\aloha-log";
+            Directory.CreateDirectory(logDir);
+            var logPath = Path.Combine(logDir, $"csharp-client-{transport}.log");
+            _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
+            Info("client", $"Log file: {logPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"WARNING: failed to open log file: {ex.Message}");
+        }
+    }
+
+    private static void Write(string level, string component, string message)
+    {
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff");
+        var line = $"{timestamp} - {component} - {level} - {message}";
+        Console.Error.WriteLine(line);
+        _writer?.WriteLine(line);
+    }
+
+    public static void Info(string component, string message) => Write("INFO", component, message);
+    public static void Warn(string component, string message) => Write("WARN", component, message);
+    public static void Error(string component, string message) => Write("ERROR", component, message);
 }

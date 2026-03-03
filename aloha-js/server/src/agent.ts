@@ -24,6 +24,9 @@ import {
 import { A2AExpressApp, jsonRpcHandler, agentCardHandler, UserBuilder } from '@a2a-js/sdk/server/express';
 import { grpcService, A2AService, UserBuilder as GrpcUserBuilder } from '@a2a-js/sdk/server/grpc';
 import { DiceAgentExecutor } from './executor.js';
+import { getLogger } from './logger.js';
+
+const logger = getLogger('server.agent');
 
 /**
  * Aloha Server implementing A2A protocol with REST, JSON-RPC, and gRPC transport support.
@@ -63,7 +66,7 @@ export class AlohaServer {
         // Create task store
         this.taskStore = new InMemoryTaskStore();
 
-        console.log('Dice Agent initialized');
+        logger.info('Dice Agent initialized');
     }
 
     /**
@@ -130,9 +133,9 @@ export class AlohaServer {
      * Start the agent server with the configured transport mode.
      */
     async start(): Promise<void> {
-        console.log('============================================================');
-        console.log('=== Dice Agent starting ===');
-        console.log('============================================================');
+        logger.info('============================================================');
+        logger.info('=== Dice Agent starting ===');
+        logger.info('============================================================');
 
         // Create the A2A executor wrapper
         const a2aExecutor = new DiceA2AExecutor(this.executor, this.contexts);
@@ -165,11 +168,11 @@ export class AlohaServer {
 
         return new Promise((resolve) => {
             expressApp.listen(this.restPort, () => {
-                console.log('============================================================');
-                console.log('Dice Agent is running:');
-                console.log(`  - Transport:    REST`);
-                console.log(`  - REST:         http://${this.host}:${this.restPort}`);
-                console.log('============================================================');
+                logger.info('============================================================');
+                logger.info('Dice Agent is running:');
+                logger.info(`  - Transport:    REST`);
+                logger.info(`  - REST:         http://${this.host}:${this.restPort}`);
+                logger.info('============================================================');
                 resolve();
             });
         });
@@ -193,11 +196,11 @@ export class AlohaServer {
 
         return new Promise((resolve) => {
             expressApp.listen(this.jsonrpcPort, () => {
-                console.log('============================================================');
-                console.log('Dice Agent is running:');
-                console.log(`  - Transport:    JSON-RPC`);
-                console.log(`  - JSON-RPC:     http://${this.host}:${this.jsonrpcPort}`);
-                console.log('============================================================');
+                logger.info('============================================================');
+                logger.info('Dice Agent is running:');
+                logger.info(`  - Transport:    JSON-RPC`);
+                logger.info(`  - JSON-RPC:     http://${this.host}:${this.jsonrpcPort}`);
+                logger.info('============================================================');
                 resolve();
             });
         });
@@ -234,11 +237,11 @@ export class AlohaServer {
         
         return new Promise((resolve) => {
             expressApp.listen(this.restPort, () => {
-                console.log('============================================================');
-                console.log('Dice Agent is running:');
-                console.log(`  - Transport:    gRPC`);
-                console.log(`  - gRPC:         ${this.host}:${this.grpcPort}`);
-                console.log('============================================================');
+                logger.info('============================================================');
+                logger.info('Dice Agent is running:');
+                logger.info(`  - Transport:    gRPC`);
+                logger.info(`  - gRPC:         ${this.host}:${this.grpcPort}`);
+                logger.info('============================================================');
                 resolve();
             });
         });
@@ -305,7 +308,7 @@ class DiceA2AExecutor implements AgentExecutor {
 
     async cancelTask(taskId: string, eventBus: ExecutionEventBus): Promise<void> {
         this.cancelledTasks.add(taskId);
-        console.log(`Cancel requested for task: ${taskId}`);
+        logger.info(`Cancel requested for task: ${taskId}`);
 
         const cancelledUpdate: TaskStatusUpdateEvent = {
             kind: 'status-update',
@@ -318,7 +321,7 @@ class DiceA2AExecutor implements AgentExecutor {
             final: true,
         };
         eventBus.publish(cancelledUpdate);
-        console.log(`Task cancelled successfully: ${taskId}`);
+        logger.info(`Task cancelled successfully: ${taskId}`);
     }
 
     async execute(
@@ -332,15 +335,15 @@ class DiceA2AExecutor implements AgentExecutor {
         const taskId = existingTask?.id || uuidv4();
         const contextId = userMessage.contextId || existingTask?.contextId || uuidv4();
 
-        console.log(`Received new request. taskId=${taskId}`);
+        logger.info(`Received new request. taskId=${taskId}`);
 
         try {
             // Validate incoming request
             try {
                 validateMessage(userMessage);
-                console.log('Message validation passed');
+                logger.debug('Message validation passed');
             } catch (error: any) {
-                console.error(`Message validation failed: ${error.message}`);
+                logger.error(`Message validation failed: ${error.message}`);
                 const errorUpdate: TaskStatusUpdateEvent = {
                     kind: 'status-update',
                     taskId: taskId,
@@ -377,7 +380,7 @@ class DiceA2AExecutor implements AgentExecutor {
                     metadata: userMessage.metadata,
                 };
                 eventBus.publish(initialTask);
-                console.log('Task submitted');
+                logger.info('Task submitted');
             }
 
             // 2. Publish "working" status update
@@ -400,14 +403,14 @@ class DiceA2AExecutor implements AgentExecutor {
                 final: false,
             };
             eventBus.publish(workingStatusUpdate);
-            console.log(`Task started working: ${taskId}`);
+            logger.info(`Task started working: ${taskId}`);
 
             // 3. Extract text from message
             const messageText = this._extractTextFromMessage(userMessage);
-            console.log(`Extracted message text: ${messageText}`);
+            logger.debug(`Extracted message text: ${messageText}`);
 
             if (!messageText || !messageText.trim()) {
-                console.warn('Empty message text received');
+                logger.warn('Empty message text received');
                 const errorUpdate: TaskStatusUpdateEvent = {
                     kind: 'status-update',
                     taskId: taskId,
@@ -439,7 +442,7 @@ class DiceA2AExecutor implements AgentExecutor {
 
             // Check if cancelled
             if (this.cancelledTasks.has(taskId)) {
-                console.log(`Task cancelled: ${taskId}`);
+                logger.info(`Task cancelled: ${taskId}`);
                 const cancelledUpdate: TaskStatusUpdateEvent = {
                     kind: 'status-update',
                     taskId: taskId,
@@ -455,14 +458,14 @@ class DiceA2AExecutor implements AgentExecutor {
             }
 
             // 5. Execute with LLM
-            console.log('Invoking LLM with tools');
+            logger.info('Invoking LLM with tools');
             let responseText: string;
             try {
                 responseText = await this.executor.execute(messageText);
-                console.log(`LLM returned response length=${responseText.length}`);
-                console.log(`Response content: ${responseText}`);
+                logger.info(`LLM returned response length=${responseText.length}`);
+                logger.debug(`Response content: ${responseText}`);
             } catch (error: any) {
-                console.error(`LLM processing error: ${error.message}`, error);
+                logger.error(`LLM processing error: ${error.message}`);
                 const errorUpdate: TaskStatusUpdateEvent = {
                     kind: 'status-update',
                     taskId: taskId,
@@ -487,7 +490,7 @@ class DiceA2AExecutor implements AgentExecutor {
 
             // Check if cancelled after execution
             if (this.cancelledTasks.has(taskId)) {
-                console.log(`Task cancelled after execution: ${taskId}`);
+                logger.info(`Task cancelled after execution: ${taskId}`);
                 const cancelledUpdate: TaskStatusUpdateEvent = {
                     kind: 'status-update',
                     taskId: taskId,
@@ -527,9 +530,9 @@ class DiceA2AExecutor implements AgentExecutor {
             };
             eventBus.publish(finalUpdate);
 
-            console.log(`Task completed successfully: ${taskId}`);
+            logger.info(`Task completed successfully: ${taskId}`);
         } catch (error: any) {
-            console.error(`Unexpected error during agent execution for task ${taskId}:`, error);
+            logger.error(`Unexpected error during agent execution for task ${taskId}: ${error}`);
             try {
                 const errorUpdate: TaskStatusUpdateEvent = {
                     kind: 'status-update',
@@ -550,9 +553,9 @@ class DiceA2AExecutor implements AgentExecutor {
                     final: true,
                 };
                 eventBus.publish(errorUpdate);
-                console.log(`Marked task as failed after unexpected error: ${taskId}`);
+                logger.info(`Marked task as failed after unexpected error: ${taskId}`);
             } catch (inner: any) {
-                console.warn(`Failed to update task after error: ${inner.message}`);
+                logger.warn(`Failed to update task after error: ${inner.message}`);
             }
         }
     }

@@ -78,11 +78,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
-                <configuration>
-                    <executable>java</executable>
-                    <commandlineArgs>-classpath %classpath com.aloha.a2a.client.AlohaClient ${exec.args}
-                    </commandlineArgs>
-                </configuration>
             </plugin>
         </plugins>
     </build>

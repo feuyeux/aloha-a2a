@@ -1,0 +1,4 @@
+# Log files are written here at runtime.
+# File naming: {lang}-{role}-{transport}.log
+# Examples: go-server-grpc.log, js-client-rest.log, python-server-jsonrpc.log
+*.log

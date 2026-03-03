@@ -21,10 +21,21 @@ from .agent_executor import DiceAgentExecutor
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
+
+
+def _init_file_logging(transport: str) -> None:
+    """Add a FileHandler that writes to aloha-log/python-server-{transport}.log."""
+    log_dir = os.environ.get("ALOHA_LOG_DIR", r"D:\coding\aloha-a2a\aloha-log")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"python-server-{transport}.log")
+    fh = logging.FileHandler(log_path, encoding="utf-8")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter(LOG_FORMAT))
+    logging.getLogger().addHandler(fh)
+    logger.info(f"Log file: {log_path}")
 
 
 class DiceAgent:
@@ -277,6 +288,9 @@ async def main():
     rest_port = int(os.getenv("REST_PORT", "13002"))
     host = os.getenv("HOST", "0.0.0.0")
     transport_mode = os.getenv("TRANSPORT_MODE", "rest").lower()
+
+    # Initialize log file output
+    _init_file_logging(transport_mode)
 
     logger.info(f"Server transport: {transport_mode.upper()}")
 

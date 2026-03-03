@@ -4,6 +4,9 @@
 
 import dotenv from 'dotenv';
 import { AlohaServer } from './agent.js';
+import { getLogger, initLogFile } from './logger.js';
+
+const logger = getLogger('server.index');
 
 // Load environment variables
 dotenv.config();
@@ -19,7 +22,10 @@ async function main() {
     const host = process.env.HOST || '0.0.0.0';
     const transportMode = (process.env.TRANSPORT_MODE || 'rest').toLowerCase();
 
-    console.log(`Server transport: ${transportMode.toUpperCase()}`);
+    // Initialize log file output
+    initLogFile(transportMode);
+
+    logger.info(`Server transport: ${transportMode.toUpperCase()}`);
 
     // Create and start server
     const server = new AlohaServer(grpcPort, jsonrpcPort, restPort, host, transportMode);
@@ -27,26 +33,26 @@ async function main() {
     try {
         await server.start();
     } catch (error) {
-        console.error('Failed to start server:', error);
+        logger.error(`Failed to start server: ${error}`);
         process.exit(1);
     }
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-    console.log('Shutdown signal received, stopping Dice Agent...');
-    console.log('Dice Agent stopped');
+    logger.info('Shutdown signal received, stopping Dice Agent...');
+    logger.info('Dice Agent stopped');
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('Shutdown signal received, stopping Dice Agent...');
-    console.log('Dice Agent stopped');
+    logger.info('Shutdown signal received, stopping Dice Agent...');
+    logger.info('Dice Agent stopped');
     process.exit(0);
 });
 
 // Start the agent
 main().catch((error) => {
-    console.error('Fatal error:', error);
+    logger.error(`Fatal error: ${error}`);
     process.exit(1);
 });

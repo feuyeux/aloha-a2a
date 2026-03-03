@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 import json
 
@@ -10,10 +11,21 @@ import click
 from client import AlohaClient
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
+
+
+def _init_file_logging(transport: str) -> None:
+    """Add a FileHandler that writes to aloha-log/python-client-{transport}.log."""
+    log_dir = os.environ.get("ALOHA_LOG_DIR", r"D:\coding\aloha-a2a\aloha-log")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"python-client-{transport}.log")
+    fh = logging.FileHandler(log_path, encoding="utf-8")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter(LOG_FORMAT))
+    logging.getLogger().addHandler(fh)
+    logger.info(f"Log file: {log_path}")
 
 
 def build_server_url(host: str, port: int, transport: str) -> str:
@@ -80,6 +92,9 @@ def main(host: str, port: int, transport: str, message: str, probe: bool):
 
     # Build server URL
     server_url = build_server_url(host, port, transport)
+
+    # Initialize log file output
+    _init_file_logging(transport)
 
     logger.info("Configuration:")
     logger.info(f"  Host: {host}")

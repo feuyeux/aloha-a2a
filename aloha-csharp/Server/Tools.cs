@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 
 namespace Aloha.A2A.Server;
@@ -9,6 +10,12 @@ namespace Aloha.A2A.Server;
 public class Tools
 {
     private static readonly Random Random = new();
+    private readonly ILogger<Tools> _logger;
+
+    public Tools(ILogger<Tools> logger)
+    {
+        _logger = logger;
+    }
 
     /// <summary>
     /// Rolls an N-sided dice and returns the result
@@ -22,10 +29,13 @@ public class Tools
     {
         if (sides <= 0)
         {
+            _logger.LogError("Invalid dice sides: {Sides}", sides);
             throw new ArgumentException("Number of sides must be positive", nameof(sides));
         }
 
-        return Random.Next(1, sides + 1);
+        var result = Random.Next(1, sides + 1);
+        _logger.LogInformation("Rolled {Sides}-sided dice: {Result}", sides, result);
+        return result;
     }
 
     /// <summary>
@@ -58,10 +68,13 @@ public class Tools
 
         if (primes.Count == 0)
         {
+            _logger.LogInformation("No prime numbers found in: [{Numbers}]", string.Join(", ", nums));
             return "None of the numbers are prime.";
         }
 
-        return $"{string.Join(", ", primes)} are prime numbers.";
+        var result = $"{string.Join(", ", primes)} are prime numbers.";
+        _logger.LogInformation("Prime check for [{Numbers}]: {Result}", string.Join(", ", nums), result);
+        return result;
     }
 
     /// <summary>
