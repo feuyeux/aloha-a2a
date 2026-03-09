@@ -5,7 +5,7 @@ go 1.24.4
 require (
 	github.com/a2aproject/a2a-go v0.3.7
 	github.com/google/uuid v1.6.0
-	github.com/ollama/ollama v0.17.5
+	github.com/ollama/ollama v0.17.7
 	google.golang.org/grpc v1.79.2
 )
 
