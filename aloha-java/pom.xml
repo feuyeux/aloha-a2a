@@ -25,7 +25,7 @@
 
         <!-- Langchain4j -->
         <langchain4j.version>1.12.2</langchain4j.version>
-        <netty.version>4.2.10.Final</netty.version>
+        <netty.version>4.2.12.Final</netty.version>
 
         <!-- Other dependencies -->
         <grpc.version>1.80.0</grpc.version>
