@@ -24,7 +24,7 @@
         <a2a.sdk.version>0.3.3.Final</a2a.sdk.version>
 
         <!-- Langchain4j -->
-        <langchain4j.version>1.13.0</langchain4j.version>
+        <langchain4j.version>1.13.1</langchain4j.version>
         <netty.version>4.2.12.Final</netty.version>
 
         <!-- Other dependencies -->
