@@ -1,11 +1,11 @@
 module github.com/aloha/a2a-go
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/a2aproject/a2a-go v0.3.15
 	github.com/google/uuid v1.6.0
-	github.com/ollama/ollama v0.23.0
+	github.com/ollama/ollama v0.23.2
 	google.golang.org/grpc v1.81.0
 )
 
