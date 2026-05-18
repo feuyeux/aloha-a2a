@@ -6,7 +6,7 @@ require (
 	github.com/a2aproject/a2a-go v0.3.15
 	github.com/google/uuid v1.6.0
 	github.com/ollama/ollama v0.23.2
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 )
 
 require (
