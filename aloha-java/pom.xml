@@ -28,7 +28,7 @@
         <netty.version>4.2.15.Final</netty.version>
 
         <!-- Other dependencies -->
-        <grpc.version>1.82.1</grpc.version>
+        <grpc.version>1.82.2</grpc.version>
         <protobuf.version>4.35.1</protobuf.version>
         <jackson.version>2.22.0</jackson.version>
     </properties>
