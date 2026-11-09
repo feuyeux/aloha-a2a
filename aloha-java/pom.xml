@@ -21,7 +21,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- A2A SDK -->
-        <a2a.sdk.version>0.3.3.Final</a2a.sdk.version>
+        <a2a.sdk.version>0.3.4</a2a.sdk.version>
 
         <!-- Langchain4j -->
         <langchain4j.version>1.23.0</langchain4j.version>
