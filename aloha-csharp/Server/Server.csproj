@@ -14,7 +14,7 @@
     <PackageReference Include="Grpc.AspNetCore" Version="2.85.0" />
     <PackageReference Include="Grpc.AspNetCore.Server" Version="2.85.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.23" />
-    <PackageReference Include="System.Text.Json" Version="10.0.14" />
+    <PackageReference Include="System.Text.Json" Version="11.0.0" />
   </ItemGroup>
 
 </Project>
