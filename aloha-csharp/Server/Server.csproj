@@ -13,7 +13,7 @@
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.82.0" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.85.0" />
     <PackageReference Include="Grpc.AspNetCore.Server" Version="2.85.0" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.22" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.23" />
     <PackageReference Include="System.Text.Json" Version="10.0.14" />
   </ItemGroup>
 
